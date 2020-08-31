@@ -1,6 +1,7 @@
 import argparse
 
 from detectron2.config import get_cfg
+#FIXME: import different adv code to launch different attacks
 from detectron2_1.adv_combine import DAGAttacker
 from detectron2 import model_zoo
 from detectron2_1.datasets import BenignMapper

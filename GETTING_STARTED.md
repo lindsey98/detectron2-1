@@ -119,7 +119,7 @@ python train_net.py \
 # Run DAG Algorithm
 ```
 python run_DAG.py \
-    --cfg-path config.yaml \
+    --cfg-path configs/faster_rcnn_bet365.yaml \
     --weights-path rcnn_bet365.pth \
     --results-save-path coco_instances_results.json \
     --vis-save-dir saved

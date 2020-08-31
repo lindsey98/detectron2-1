@@ -120,7 +120,7 @@ python train_net.py \
 ```
 python run_DAG.py \
     --cfg-path config.yaml \
-    --weights-path model_final.pth \
+    --weights-path rcnn_bet365.pth \
     --results-save-path coco_instances_results.json \
     --vis-save-dir saved
 ```

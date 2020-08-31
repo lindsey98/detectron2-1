@@ -39,7 +39,7 @@ As follows is a sketch of the complete DAG algorithm:
 2. Filter for targets that actually overlap with the ground-truth object, and with a confidence score for the ground-truth class > 0.1 (i.e. narrow down to a robust set of targets to attack).
 3. Randomly assign an adversarial label to each target
 4. Then for N iterations (N = 150 suggested by the authors):
-    1. Compute the objective, only using targets still not misclassified as the adversarial label
+    1. Compute the objective, only using targets still not misclassified as the adversarial label (In the original paper, the target set is defined as regions that are still classified as ground-truth labels)
     2. Take the normalized gradient of the objective and add it to the image
     3. Terminate if all targets are misclassified as desired, else repeat
 

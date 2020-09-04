@@ -353,7 +353,7 @@ class DAGAttacker:
     
     def _save_gt_dicts(
         self, batched_inputs: Dict[str, Any], perturb_size: List[int], json_file: str
-    ) -> List[Dict[str, Any]]:
+    ) -> None:
         """Convert model outputs to coco predictions format
 
         Parameters

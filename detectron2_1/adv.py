@@ -19,6 +19,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import pickle
 import seaborn as sns
+from pathlib import Path
 os.environ['QT_QPA_PLATFORM']='offscreen'
 
 def make_one_hot(labels, num_classes, device='cuda:0'):
@@ -110,6 +111,7 @@ class DAGAttacker:
 
     def run_DAG(
         self,
+        gt_save_path="coco_perturb_gt.json",
         results_save_path="coco_instances_results.json",
         vis_save_dir=None,
         vis_conf_thresh=0.5,
@@ -132,7 +134,10 @@ class DAGAttacker:
         """
         # Save predictions in coco format
         coco_instances_results = []
-
+        
+        # clear gt dict if exist
+        if os.path.exists(gt_save_path):
+            os.unlink(gt_save_path)
         # Runs on entire test dataset
         # For each image
         for i, batch in tqdm(enumerate(self.data_loader)):
@@ -140,6 +145,7 @@ class DAGAttacker:
 
             file_name = batch[0]["file_name"]
             basename = os.path.basename(file_name)
+            foldername = file_name.split(os.path.sep)[-2]
             image_id = batch[0]["image_id"]
 
             # Peform DAG attack
@@ -160,36 +166,50 @@ class DAGAttacker:
             instance_dicts = self._create_instance_dicts(outputs, image_id)
             coco_instances_results.extend(instance_dicts)
 
-            if vis_save_dir:
-                # Save adv predictions
-                # Set confidence threshold
-                instances = outputs["instances"]
-                mask = instances.scores > vis_conf_thresh
-                instances = instances[mask]
+#             if vis_save_dir:
+            # Save adv predictions
+            # Set confidence threshold
+            instances = outputs["instances"]
+            mask = instances.scores > vis_conf_thresh
+            instances = instances[mask]
 
-                v = Visualizer(perturbed_image[:, :, ::-1], self.metadata)
-                vis_adv = v.draw_instance_predictions(instances.to("cpu")).get_image()
-
+            v = Visualizer(perturbed_image[:, :, ::-1], self.metadata)
+            vis_adv = v.draw_instance_predictions(instances.to("cpu")).get_image()
+            
+#             print(foldername)
+            # Define dataset paths
+            data_dir = Path("data")
+            benign_data_dir = data_dir / "benign_data"
+            benign_img_dir = benign_data_dir / "benign_database"
+            cv2.imwrite(os.path.join(benign_img_dir, foldername, 'shot_adv.png'), perturbed_image)
+            
+#             print(perturbed_image.shape)
+            self._save_gt_dicts(batched_inputs=batch, 
+                                perturb_size=perturbed_image.shape[:2], 
+                                json_file=gt_save_path)
+            
                 # Save original predictions
-                outputs = self(original_image)
-                instances = outputs["instances"]
-                mask = instances.scores > vis_conf_thresh
-                instances = instances[mask]
+#                 outputs = self(original_image)
+#                 instances = outputs["instances"]
+#                 mask = instances.scores > vis_conf_thresh
+#                 instances = instances[mask]
 
-                v = Visualizer(original_image[:, :, ::-1], self.metadata)
-                vis_og = v.draw_instance_predictions(instances.to("cpu")).get_image()
+#                 v = Visualizer(original_image[:, :, ::-1], self.metadata)
+#                 vis_og = v.draw_instance_predictions(instances.to("cpu")).get_image()
                 
                 # Save single image
-                cv2.imwrite(os.path.join(vis_save_dir, str(i)+'.jpg'), vis_og)
-                cv2.imwrite(os.path.join(vis_save_dir, str(i)+'_adv.jpg'), vis_adv)
-                plt.figure(figsize=(50, 50))
-                sns.heatmap(r_accum, cmap='RdBu', vmin=-2, vmax=2, square=True, annot=False)
-                plt.savefig(os.path.join(vis_save_dir, str(i)+'_noise.jpg'))
-                plt.close()
+#                 cv2.imwrite(os.path.join(vis_save_dir, str(i)+'.jpg'), vis_og)
+
+#                 plt.figure(figsize=(50, 50))
+#                 sns.heatmap(r_accum, cmap='RdBu', vmin=-2, vmax=2, square=True, annot=False)
+#                 plt.savefig(os.path.join(vis_save_dir, str(i)+'_noise.jpg'))
+#                 plt.close()
                             
         # Save predictions as COCO results json format
         with open(results_save_path, "w") as f:
             json.dump(coco_instances_results, f)
+            
+            
 
         return coco_instances_results
 
@@ -331,7 +351,64 @@ class DAGAttacker:
             instance_dicts.append(i_dict)
 
         return instance_dicts
+    
+    def _save_gt_dicts(
+        self, batched_inputs: Dict[str, Any], perturb_size: List[int], json_file: str
+    ) -> List[Dict[str, Any]]:
+        """Convert model outputs to coco predictions format
 
+        Parameters
+        ----------
+        batched_inputs : Dict[str, Any]
+            Input dictionary for data
+        perturb_size: image size after perturbation (include padding)
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            List of per instance predictions
+        """
+        if os.path.exists(json_file):
+            with open(json_file, 'r') as handle:
+                json_dict = json.load(handle)
+        else:
+            json_dict = {"images": [],  "annotations": [], "categories": [{"id": 1, "name": "box"}, {"id": 2, "name": "logo"}]}
+            
+        height, width = perturb_size
+        filename = os.path.sep.join(batched_inputs[0]["file_name"].replace('shot.png', 'shot_adv.png').split(os.path.sep)[-2:])
+        image_id = batched_inputs[0]["image_id"]
+        image = {
+            "file_name": filename,
+            "height": height,
+            "width": width,
+            "id": image_id,
+        }
+        json_dict["images"].append(image)
+        
+#         print(json_dict)
+        ## get gt_box annotations
+        for i, b in enumerate(batched_inputs[0]['instances'].gt_boxes):
+            x1, y1, x2, y2 = int(b[0]), int(b[1]), int(b[2]), int(b[3])
+            width = x2 - x1
+            height = y2 - y1
+            
+            category_id = batched_inputs[0]['instances'].gt_classes[i].item()+1
+            id_annot = json_dict['annotations'][-1]['id']+1 if len(json_dict["annotations"])!=0 else 0
+                
+            ann = {
+                "area": width * height,
+                "image_id": image_id,
+                "bbox": [x1, y1, width, height],
+                "category_id": category_id,
+                "id": id_annot, # need to be continuous
+                "iscrowd": 0
+                }
+            json_dict["annotations"].append(ann)
+            
+        ## write to json file
+        with open(json_file, "w") as f:
+            json.dump(json_dict, f)
+            
     @torch.no_grad()
     def _post_process_image(self, image: torch.Tensor) -> torch.Tensor:
         """Process image back to [0, 255] range, i.e. undo the normalization

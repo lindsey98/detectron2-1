@@ -39,7 +39,7 @@ As follows is a sketch of the complete DAG algorithm:
 2. Filter for targets that actually overlap with the ground-truth object, and with a confidence score for the ground-truth class > 0.1 (i.e. narrow down to a robust set of targets to attack).
 3. Randomly assign an adversarial label to each target
 4. Then for N iterations (N = 150 suggested by the authors):
-    1. Compute the objective, only using targets still not misclassified as the adversarial label (In the original paper, the target set is defined as regions that are still classified as ground-truth labels)
+    1. Compute the objective, only using targets still not misclassified as the adversarial label
     2. Take the normalized gradient of the objective and add it to the image
     3. Terminate if all targets are misclassified as desired, else repeat
 
@@ -65,19 +65,19 @@ Some qualitative results, with original prediction on the left, and prediction o
 ![coco_eg_3](figs/coco_eg_3.png)
 
 ### Phishing Dataset
-|                          | Original | DAG original | DAG with improved activeset| DAG reg| DAG combine|
-|--------------------------|----------|--------------|------------|--------------|------------|
-| mAP (IoU=0.50:0.95)      | 59       | 4            | 2.2        | 1.9          | 2.9
-|                          |          |              |            |              | 
-| Input AP (IoU=0.50:0.95) | 70.6     | 2.5          | 0.8        | 0.9          | 1.8
-| Input Recall (IoU=0.50)  | 98.8     | 28.3         | 22.4       | 26.3         | 27.1
-| Input Recall (IoU=0.70)  | 95.9     | 5.4          | 3.9        | 4            | 5.4
-| Input Recall (IoU=0.85)  | 76.0     | 0.2          | 0.0        | 0.1          | 0.1
-|                          |          |              |            |              |
-| Logo AP (IoU=0.50:0.95)  | 47.4     | 5.5          | 3.5        | 2.8          | 3.9
-| Logo Recall (IoU=0.50)   | 93.4     | 35.9         | 26.2       | 34.4         | 36.3
-| Logo Recall (IoU=0.70)   | 79.6     | 17.6         | 13.8       | 14.6         | 16.1
-| Logo Recall (IoU=0.85)   | 35.6     | 2.4          | 2.7        | 2.0          | 2.3
+|                          | Original | Adversarial |
+|--------------------------|----------|-------------|
+| mAP (IoU=0.50:0.95)      | 59.7     | 2.9         |
+|                          |          |             |
+| Input AP (IoU=0.50:0.95) | 70.0     | 0.8         |
+| Input Recall (IoU=0.50)  | 98.1     | 20.8        |
+| Input Recall (IoU=0.70)  | 95.3     | 3.4         |
+| Input Recall (IoU=0.85)  | 74.9     | 0.1         |
+|                          |          |             |
+| Logo AP (IoU=0.50:0.95)  | 49.3     | 5.0         |
+| Logo Recall (IoU=0.50)   | 94.1     | 28.7        |
+| Logo Recall (IoU=0.70)   | 80.9     | 15.9        |
+| Logo Recall (IoU=0.85)   | 38.0     | 3.5         |
 
 Some qualitative results, with original prediction on the left, and prediction on adversarial image on the right.
 

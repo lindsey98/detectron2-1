@@ -117,15 +117,10 @@ python train_net.py \
 ```
 
 # Run DAG Algorithm
-In detectron2_1 folder: \
-    adv.py is the original DAG \
-    adv_reg.py is perturbing regression coord instead of class prediction \
-    adv_combine.py is combining two approaches 
-    
 ```
 python run_DAG.py \
-    --cfg-path configs/faster_rcnn_bet365.yaml \
-    --weights-path rcnn_bet365.pth \
+    --cfg-path config.yaml \
+    --weights-path model_final.pth \
     --results-save-path coco_instances_results.json \
     --vis-save-dir saved
 ```

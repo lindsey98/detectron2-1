@@ -1,8 +1,7 @@
 import argparse
 
 from detectron2.config import get_cfg
-#FIXME: import different adv code to launch different attacks
-from detectron2_1.adv_combine import DAGAttacker
+from detectron2_1.adv_train import DAGAttacker
 from detectron2 import model_zoo
 from detectron2_1.datasets import BenignMapper
 
@@ -12,7 +11,7 @@ def main(args):
     cfg = get_cfg()
     cfg.merge_from_file(args.cfg_path)
     cfg.MODEL.WEIGHTS = args.weights_path
-
+    
     print("Initializing attacker...")
     # Using custom DatasetMapper
     attacker = DAGAttacker(cfg, mapper=BenignMapper)

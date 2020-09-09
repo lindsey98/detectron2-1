@@ -1,7 +1,6 @@
 import argparse
 
 from detectron2.config import get_cfg
-from detectron2_1.adv_train import DAGAttacker
 from detectron2 import model_zoo
 from detectron2_1.datasets import BenignMapper
 
@@ -40,7 +39,17 @@ if __name__ == "__main__":
         required=False,
         help="Directory to save visualized bbox prediction images",
     )
-
+    
+    parser.add_argument(
+        "--test", 
+        required=True,
+        help="Generate adversarial examples for training/testing"
+    )
     args = parser.parse_args()
-
+    
+    if args.test == "True":
+        from detectron2_1.adv import DAGAttacker
+    else:
+        from detectron2_1.adv_train import DAGAttacker
+        
     main(args)

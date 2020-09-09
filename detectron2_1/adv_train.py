@@ -93,7 +93,7 @@ class DAGAttacker:
         self.input_format = cfg.INPUT.FORMAT
         assert self.input_format in ["RGB", "BGR"], self.input_format
 
-        # Init dataloader on test dataset
+        # Init dataloader on training dataset
         dataset_mapper = mapper(cfg, is_train=False)
 #         self.data_loader = build_detection_test_loader(
 #             cfg, cfg.DATASETS['TRAIN'][0], mapper=dataset_mapper
@@ -143,6 +143,8 @@ class DAGAttacker:
         # Runs on entire test dataset
         # For each image
         for i, batch in tqdm(enumerate(self.data_loader)):
+            if i >= 10000: # TODO: do not generate all training 
+                return coco_instances_results
             original_image = batch[0]["image"].permute(1, 2, 0).numpy()
 
             file_name = batch[0]["file_name"]
@@ -174,15 +176,13 @@ class DAGAttacker:
             
             instance_dicts = self._create_instance_dicts(outputs, image_id)
             coco_instances_results.extend(instance_dicts)
-            
-#             print(foldername)
+
             # save ground-truth labels for perturbed image --> prepare for adversarial training
             data_dir = Path("data")
             benign_data_dir = data_dir / "benign_data"
             benign_img_dir = benign_data_dir / "benign_database"
             cv2.imwrite(os.path.join(benign_img_dir, foldername, 'shot_adv.png'), perturbed_image)
             
-#             print(perturbed_image.shape)
             self._save_gt_dicts(batched_inputs=batch, 
                                 perturb_size=perturbed_image.shape[:2], 
                                 json_file=gt_save_path)

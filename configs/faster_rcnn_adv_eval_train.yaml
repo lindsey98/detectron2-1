@@ -1,7 +1,7 @@
 _BASE_: "./bases/Base-RCNN-FPN.yaml"
 MODEL:
   # COCO ResNet50 weights
-  WEIGHTS: "/home/l/liny/yizhe/code/detectron2-1/rcnn_bet365-Copy1.pth"
+  WEIGHTS: "./output/rcnn_bet365/model_final.pth"
   MASK_ON: False # Not doing segmentation
   RESNETS:
     DEPTH: 50 # ResNet50
@@ -13,7 +13,7 @@ MODEL:
     FREEZE_AT: 2 # Default 2
 DATASETS:
   TRAIN: ("benign_adv",)
-  TEST: ("benign_test",)
+  TEST: ("benign_adv",)
 DATALOADER:
   NUM_WORKERS: 0
 SOLVER:
@@ -28,5 +28,5 @@ INPUT:
 TEST:
   # The period (in terms of steps) to evaluate the model during training.
   # Set to 0 to disable.
-  EVAL_PERIOD: 6000
+  EVAL_PERIOD: 1000
 OUTPUT_DIR: "./output/adv" # Specify output directory

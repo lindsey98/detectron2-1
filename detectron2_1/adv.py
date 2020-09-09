@@ -111,8 +111,8 @@ class DAGAttacker:
 
     def run_DAG(
         self,
-        gt_save_path="coco_perturb_gt.json",
-        results_save_path="coco_instances_results.json",
+        gt_save_path="data/benign_data/coco_perturbgt_test.json",
+        results_save_path="coco_instances_results_yizhe.json",
         vis_save_dir=None,
         vis_conf_thresh=0.5,
     ):

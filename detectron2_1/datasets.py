@@ -21,14 +21,16 @@ benign_train_coco_path = benign_data_dir / "coco_train.json"
 benign_test_coco_path = benign_data_dir / "coco_test.json"
 benign_eval_coco_path = benign_data_dir / "coco_eval.json"
 benign_bet365_coco_path = benign_data_dir / "coco_bet365.json"
-benign_gt_coco_path = benign_data_dir / "coco_adv_mix.json"
+benign_adv_train_coco_path = benign_data_dir / "coco_adv_mix.json"
+benign_adv_test_coco_path = benign_data_dir / "coco_perturbgt_test.json"
 
 # Register benign train and test sets
 register_coco_instances("benign_train", {}, benign_train_coco_path, benign_img_dir)
 register_coco_instances("benign_test", {}, benign_test_coco_path, benign_img_dir)
 register_coco_instances("benign_eval", {}, benign_eval_coco_path, eval_img_dir)
 register_coco_instances("benign_bet365", {}, benign_bet365_coco_path, benign_img_dir)
-register_coco_instances("benign_adv", {}, benign_gt_coco_path, benign_img_dir)
+register_coco_instances("benign_adv", {}, benign_adv_train_coco_path, benign_img_dir)
+register_coco_instances("benign_adv_test", {}, benign_adv_test_coco_path, benign_img_dir)
 
 
 def build_transform_gen(cfg, is_train):

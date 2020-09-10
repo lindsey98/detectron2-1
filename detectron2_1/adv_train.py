@@ -143,7 +143,7 @@ class DAGAttacker:
         # Runs on entire test dataset
         # For each image
         for i, batch in tqdm(enumerate(self.data_loader)):
-            if i >= 10000: # TODO: do not generate all training 
+            if i >= 7000: # TODO: do not generate all training 
                 return coco_instances_results
             original_image = batch[0]["image"].permute(1, 2, 0).numpy()
 

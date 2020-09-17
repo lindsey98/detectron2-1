@@ -13,7 +13,7 @@ MODEL:
     FREEZE_AT: 2 # Default 2
 DATASETS:
   TRAIN: ("benign_bet365",)
-  TEST: ("benign_test",)
+  TEST: ("benign_database",)
 DATALOADER:
   NUM_WORKERS: 0
 SOLVER:

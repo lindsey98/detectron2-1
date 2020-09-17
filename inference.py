@@ -19,6 +19,7 @@ def inference(img_path, config_path, weights_path, output_path, conf_threshold=0
     cfg.merge_from_file(config_path)
     cfg.MODEL.WEIGHTS = weights_path
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = conf_threshold
+    cfg.MODEL.DEVICE = 'cpu'
 
     # Initialize model
     predictor = DefaultPredictor(cfg)

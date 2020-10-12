@@ -83,7 +83,7 @@ def setup(args):
     # Can create custom configs fields here too
     cfg.merge_from_list(args.opts)
     # Replace RPN head with quantized version
-    cfg.MODEL.RPN.HEAD_NAME = 'QuantizeRPNHead'
+    cfg.MODEL.BACKBONE.NAME = 'build_resnet_fpn_backbone_quantize'
 
     # Create directory if does not exist
     Path(cfg.OUTPUT_DIR).mkdir(exist_ok=True)

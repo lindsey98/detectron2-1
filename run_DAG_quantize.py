@@ -10,7 +10,8 @@ def main(args):
     cfg = get_cfg()
     cfg.merge_from_file(args.cfg_path)
     cfg.MODEL.WEIGHTS = args.weights_path
-    cfg.MODEL.RPN.HEAD_NAME = 'QuantizeRPNHead'
+    cfg.MODEL.BACKBONE.NAME = 'build_resnet_fpn_backbone_quantize'
+#     cfg.MODEL.ROI_BOX_HEAD.NAME = 'FastRCNNConvFCHeadQuantize'
     
     print("Initializing attacker...")
     # Using custom DatasetMapper

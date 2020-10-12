@@ -150,43 +150,71 @@ class DAGAttacker:
 
             # Peform DAG attack
             print(f"[{i}/{len(self.data_loader)}] Attacking {file_name} ...")
-            perturbed_image, r_accum = self.attack_image(batch)
+#             perturbed_image, r_accum = self.attack_image(batch)
             
             # Permute axis into HxWxC and convert BGR to RGB for better display
-            r_accum = r_accum[0].permute(1, 2, 0).cpu().numpy()[:, :, ::-1].astype(np.float32)
-            r_accum = np.mean(r_accum, axis=-1)
+#             r_accum = r_accum[0].permute(1, 2, 0).cpu().numpy()[:, :, ::-1].astype(np.float32)
+#             r_accum = np.mean(r_accum, axis=-1)
             
             # Perform inference on perturbed image
-            perturbed_image = (
-                perturbed_image.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
-            )
+#             perturbed_image = (
+#                 perturbed_image.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+#             )
+            perturbed_image = original_image
             outputs = self(perturbed_image)
 
             # Convert to coco predictions format
             instance_dicts = self._create_instance_dicts(outputs, image_id)
             coco_instances_results.extend(instance_dicts)
 
-#             if vis_save_dir:
-            # Save adv predictions
-            # Set confidence threshold
-            instances = outputs["instances"]
-            mask = instances.scores > vis_conf_thresh
-            instances = instances[mask]
+            if vis_save_dir:
+                os.makedirs(vis_save_dir, exist_ok = True)
+                # Save adv predictions
+                # Set confidence threshold
+                instances = outputs["instances"]
+                mask = instances.scores > vis_conf_thresh
+                instances = instances[mask]
 
-            v = Visualizer(perturbed_image[:, :, ::-1], self.metadata)
-            vis_adv = v.draw_instance_predictions(instances.to("cpu")).get_image()
+                v = Visualizer(perturbed_image[:, :, ::-1], self.metadata)
+                vis_adv = v.draw_instance_predictions(instances.to("cpu")).get_image()
+
+                # Save original predictions
+                outputs = self(original_image)
+                instances = outputs["instances"]
+                mask = instances.scores > vis_conf_thresh
+                instances = instances[mask]
+
+                v = Visualizer(original_image[:, :, ::-1], self.metadata)
+                vis_og = v.draw_instance_predictions(instances.to("cpu")).get_image()
+
+                # Save side-by-side
+                # concat = np.concatenate((vis_og, vis_adv), axis=1)
+
+                # save_path = os.path.join("saved/adv", basename)
+                # cv2.imwrite(save_path, concat[:, :, ::-1])
+
+                save_path = os.path.join(vis_save_dir, f"{i}.jpg")
+                save_adv_path = os.path.join(vis_save_dir, f"{i}_adv.jpg")
+
+                cv2.imwrite(save_path, vis_og[:, :, ::-1])
+                cv2.imwrite(save_adv_path, vis_adv[:, :, ::-1])
+                print(f"Saved visualization to {save_path}")
+                
+            # Save predictions as COCO results json format, save every round
+            with open(results_save_path, "w") as f:
+                json.dump(coco_instances_results, f)
             
 #             print(foldername)
             # Define dataset paths
-            data_dir = Path("data")
-            benign_data_dir = data_dir / "benign_data"
-            benign_img_dir = benign_data_dir / "benign_database"
-            cv2.imwrite(os.path.join(benign_img_dir, foldername, 'shot_adv.png'), perturbed_image)
+#             data_dir = Path("data")
+#             benign_data_dir = data_dir / "benign_data"
+#             benign_img_dir = benign_data_dir / "benign_database"
+#             cv2.imwrite(os.path.join(benign_img_dir, foldername, 'shot_adv.png'), perturbed_image)
             
 #             print(perturbed_image.shape)
-            self._save_gt_dicts(batched_inputs=batch, 
-                                perturb_size=perturbed_image.shape[:2], 
-                                json_file=gt_save_path)
+#             self._save_gt_dicts(batched_inputs=batch, 
+#                                 perturb_size=perturbed_image.shape[:2], 
+#                                 json_file=gt_save_path)
             
                 # Save original predictions
 #                 outputs = self(original_image)
@@ -204,12 +232,7 @@ class DAGAttacker:
 #                 sns.heatmap(r_accum, cmap='RdBu', vmin=-2, vmax=2, square=True, annot=False)
 #                 plt.savefig(os.path.join(vis_save_dir, str(i)+'_noise.jpg'))
 #                 plt.close()
-                            
-        # Save predictions as COCO results json format
-        with open(results_save_path, "w") as f:
-            json.dump(coco_instances_results, f)
-            
-            
+    
 
         return coco_instances_results
 
@@ -289,7 +312,8 @@ class DAGAttacker:
             # Backprop and compute gradient wrt image
             total_loss.backward()
             image_grad = images.tensor.grad.detach()
-
+#             print(image_grad)
+            
             # Apply perturbation on image
             with torch.no_grad():
                 # Normalize grad

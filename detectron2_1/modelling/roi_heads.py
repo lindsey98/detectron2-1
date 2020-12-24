@@ -192,7 +192,10 @@ class ROIHeadsAL(StandardROIHeads):
                             (idx, prob) in zip(filtered_indices, pred_probs)]
         
         for cur_detection, object_score in zip(cur_detections, object_scores):
-            cur_detection.scores_al = object_score
+            if len(cur_detection) == 0: # no prediction
+                cur_detection.scores_al = cur_detection.scores
+            else:                    
+                cur_detection.scores_al = object_score
 
         return cur_detections
     
@@ -206,9 +209,12 @@ class ROIHeadsAL(StandardROIHeads):
             outputs.inference(self.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST,
                                self.cfg.MODEL.ROI_HEADS.NMS_THRESH_TEST, 
                                self.cfg.TEST.DETECTIONS_PER_IMAGE)
-
+        
         for cur_detection in cur_detections:
-            cur_detection.scores_al = (1-cur_detection.scores)**2
+            if len(cur_detection) == 0: # no prediction
+                cur_detection.scores_al = cur_detection.scores
+            else:            
+                cur_detection.scores_al = (1-cur_detection.scores)**2
 
         return cur_detections
     
@@ -226,8 +232,10 @@ class ROIHeadsAL(StandardROIHeads):
         raw_probs = [prob[idx] for (idx, prob) in zip(filtered_indices, outputs.predict_probs())]
         
         for raw_prob, cur_detection in zip(raw_probs, cur_detections):
-            print(raw_prob.shape)
-            cur_detection.scores_al = calculate_ce_scores(raw_prob, raw_prob, 1)
+            if len(cur_detection) == 0: # no prediction
+                cur_detection.scores_al = cur_detection.scores
+            else:
+                cur_detection.scores_al = calculate_ce_scores(raw_prob, raw_prob, 1) # set num_shifts=1, no split
 
         return cur_detections
     
@@ -244,7 +252,10 @@ class ROIHeadsAL(StandardROIHeads):
 
         device = cur_detections[0].scores.device
         for cur_detection in cur_detections:
-            cur_detection.scores_al = torch.rand(cur_detection.scores.shape).to(device)
+            if len(cur_detection) == 0: # no prediction
+                cur_detection.scores_al = cur_detection.scores
+            else:
+                cur_detection.scores_al = torch.rand(cur_detection.scores.shape).to(device)
 
         return cur_detections
 
@@ -361,16 +372,20 @@ class ROIHeadsAL(StandardROIHeads):
                               self.cfg.TEST.DETECTIONS_PER_IMAGE)
         
         # Get euclidean distances w.r.t. reference feature embeddings
-        heatmaps = self._feature_embed(features)
-        # TODO: normalize
-        pdist = torch.nn.PairwiseDistance(p=2)
-        all_dists = pdist(heatmaps.view(1, -1), feature_refs)
-        print(all_dists.shape)
-        mindist = torch.min(all_dists)
-        print(mindist)
+        heatmap_emb = self._feature_embed(features).view(1, -1)
+        
+        # Compute cosine similarity
+        normalize_emb = F.normalize(heatmap_emb, p=2, dim=1)
+        normalize_refs = F.normalize(feature_refs, p=2, dim=1)
+        
+        cosine_sims = torch.matmul(normalize_emb, normalize_refs.T)
+        max_sim = torch.max(cosine_sims)
         
         for cur_detection in cur_detections:
-            cur_detection.scores_al = mindist.item()*torch.ones_like(cur_detection.scores).to(self.device)
+            if len(cur_detection) == 0:
+                cur_detection.scores_al = cur_detection.scores
+            else:
+                cur_detection.scores_al = max_sim.item()*torch.ones_like(cur_detection.scores).to(self.device)
 
         return cur_detections
         

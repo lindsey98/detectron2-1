@@ -1,8 +1,9 @@
-import os
-os.chdir('..')
+import sys
+sys.path.append("..") 
+
 from configs import get_cfg
 from modelling import *
-from AL_merge import *
+from AL.AL_merge import *
 from detectron2.data import build_detection_test_loader
 from datasets import CustomizeMapper
 import json
@@ -213,7 +214,7 @@ class FeatureEmb(Inference):
             self.inference_dict.extend(instance_dicts)
             
             if i % 100 == 0:
-                Write intermediate results
+#                 Write intermediate results
                 with open(self.write_json_path, 'wt', encoding='UTF-8') as f:
                     json.dump(self.inference_dict, f)
                 print(len(pooled_heatmaps))  
@@ -350,6 +351,7 @@ class FeatureEmb(Inference):
     
     
 if __name__ == '__main__':
+    #TODO: decrease cfg.TEST.TOPk
     parser = default_argument_parser()
 
     # Extra Configurations for dataset names and paths

@@ -4,6 +4,30 @@ import random
 import json
 import numpy as np
 from tqdm import tqdm
+import sys
+sys.path.append("..") 
+
+from configs import get_cfg
+from detectron2.engine import default_argument_parser, default_setup
+
+def setup(args):
+    """
+    Create configs and perform basic setups.
+    """
+
+    # Initialize the configurations
+    cfg = get_cfg()
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    
+    # Ensure it uses appropriate names and architecture  
+    cfg.MODEL.ROI_HEADS.NAME = 'ROIHeadsAL'
+    cfg.MODEL.META_ARCHITECTURE = 'ActiveLearningRCNN'
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05 # lower this threshold to get more boxes
+
+    cfg.freeze()
+    default_setup(cfg, args)
+    return cfg
 
 class MergeDataset:
     
@@ -12,15 +36,16 @@ class MergeDataset:
                  merge_dataset_path):
         
         self.cfg = cfg
-        # Read training data json file: {"images":[], "annotations":[]}
+        # Read training data gt json file: {"images":[], "annotations":[]}
         with open(orig_dataset_json, 'rt', encoding='UTF-8') as f:
             self.orig_data_dict = json.load(f)
             
-        # Read AL data json file: {"images":[], "annotations":[]}
+        # Read AL data gt json file: {"images":[], "annotations":[]}
         with open(al_dataset_json, 'rt', encoding='UTF-8') as f:
             self.al_data_dict = json.load(f)           
             
-        # Read AL data prediction file: [{"image_id":, "bbox":, "score":, "category_id":, "score_al":}, {}]
+        # Read AL data prediction file: [{"image_id":, "bbox":, "score":, "category_id":, "score_al":}, 
+        #                                {"image_id":, "bbox":, "score":, "category_id":, "score_al":}]
         with open(al_pred_dict, 'rt', encoding='UTF-8') as f:
             self.al_pred_dict = json.load(f)
             
@@ -91,6 +116,7 @@ class SelectALDataset(MergeDataset):
         image_scores = list(dict.fromkeys(image_scores))
         image_ids = list(dict.fromkeys(image_ids))
         
+        assert len(image_scores) == len(image_ids)
         # Select TopN uncertain image ids
         print('Start finding topN image ids')
         sorted_image_scores = np.argsort(image_scores)[::-1] 
@@ -102,7 +128,9 @@ class SelectALDataset(MergeDataset):
     
     
     def _select_dict_byid(self, selected_image_ids):
-        print('Number of AL instances before filtering:', len(self.al_data_dict))
+        '''Select dictionary by ID'''
+        
+        print('Number of AL instances before filtering:', len(self.al_data_dict["images"]))
         al_select_images = funcy.lfilter(lambda a: a['id'] in selected_image_ids.tolist(), 
                                        self.al_data_dict["images"])
         
@@ -116,7 +144,8 @@ class SelectALDataset(MergeDataset):
 
         
     def _merge_datadict(self):
-        '''Reindex datadict when merging two datadict'''
+        '''Merging two datadict'''
+        
         datadict_orig = self.orig_data_dict
         al_select_images, al_select_annotations = self._select_topn(n=len(self.al_data_dict["images"])//4) # Select 1/4 of AL data
         
@@ -149,10 +178,11 @@ class PseudoALDataset(MergeDataset):
 
         
     def _generate_pseudo_dict(self):
+        '''Generate pseudo labelled data dictionary'''
         coco_images = []
         coco_annotations = []
 
-        for _, image_dict in enumerate(self.al_pred_dict):
+        for image_dict in tqdm(self.al_pred_dict):
 
             instance_gt = funcy.lfilter(lambda a: a["id"] == image_dict["image_id"], 
                                         self.al_data_dict["images"])[0]
@@ -177,7 +207,7 @@ class PseudoALDataset(MergeDataset):
                 "image_id": image_dict["image_id"],
                 "bbox": [x1, y1, width, height],
                 "category_id": category_id,
-                "id": len(coco_annotations) + 1, # id for box, need to be continuous
+                "id": len(coco_annotations) + 1, # id for box, need to be continuous, starts from 1
                 "iscrowd": 0
                 }
 
@@ -204,4 +234,44 @@ class PseudoALDataset(MergeDataset):
             json.dump(merged_dict, f)
             
         return merged_dict
+    
+    
+    
+if __name__ == '__main__':
+    parser = default_argument_parser()
+
+    # Extra Configurations for dataset names and paths
+    parser.add_argument("--json_annotation_train", required=True, help="The path to the training set JSON annotation")
+    
+    parser.add_argument("--json_annotation_gt_AL", required=True, help="The path to the AL set gt JSON annotation")
+    parser.add_argument("--json_annotation_pred_AL", required=True, help="The path to the AL set prediction JSON annotation")
+    
+    parser.add_argument("--json_annotation_merge", required=True, help="The path to the merged set JSON annotation")
+    parser.add_argument("--select", action="store_true", help="Select AL/Generate Pseudo-labelled AL")
+    args = parser.parse_args()
+    print("Command Line Args:", args)
+    cfg = setup(args)
+    
+    if args.select:
+        
+        al_dataset = SelectALDataset(cfg, 
+                                     orig_dataset_json=args.json_annotation_train,
+                                     al_dataset_json=args.json_annotation_gt_AL,
+                                     al_pred_dict=args.json_annotation_pred_AL,
+                                     merge_dataset_path=args.json_annotation_merge)
+        
+    else:
+    
+        al_dataset = PseudoALDataset(cfg, 
+                                     orig_dataset_json=args.json_annotation_train,
+                                     al_dataset_json=args.json_annotation_gt_AL,
+                                     al_pred_dict=args.json_annotation_pred_AL,
+                                     merge_dataset_path=args.json_annotation_merge)
+        
+        
+    al_dataset.run()
+    
+
+
+
     

@@ -9,6 +9,9 @@ sys.path.append("..")
 
 from configs import get_cfg
 from detectron2.engine import default_argument_parser, default_setup
+from detectron2.data import MetadataCatalog, DatasetCatalog
+
+
 
 def setup(args):
     """
@@ -176,9 +179,8 @@ class PseudoALDataset(MergeDataset):
                  al_dataset_json, al_pred_dict, 
                  merge_dataset_path)
 
-        
+
     def _generate_pseudo_dict(self):
-        '''Generate pseudo labelled data dictionary'''
         coco_images = []
         coco_annotations = []
 
@@ -207,13 +209,18 @@ class PseudoALDataset(MergeDataset):
                 "image_id": image_dict["image_id"],
                 "bbox": [x1, y1, width, height],
                 "category_id": category_id,
-                "id": len(coco_annotations) + 1, # id for box, need to be continuous, starts from 1
+                "id": len(coco_annotations) + 1, # id for box, need to be continuous
                 "iscrowd": 0
                 }
 
             coco_annotations.append(ann)
         return coco_images, coco_annotations
 
+    def _annot_reorder(self, merged_dict):
+        ct = 0
+        for annot in merged_dict["annotations"]:
+            annot['id'] = ct + 1
+            ct += 1
         
     def _merge_datadict(self):
         '''Reindex datadict when merging two datadict'''
@@ -224,8 +231,28 @@ class PseudoALDataset(MergeDataset):
         merged_dict = datadict_orig
         merged_dict['images'].extend(coco_images)
         merged_dict['annotations'].extend(coco_annotations)
+        
+        merged_dict = self._annot_reorder(merged_dict)
+        
+                
+        metadata = MetadataCatalog.get('coco_2017_train')
 
+        # unmap the category mapping ids for COCO
+        if hasattr(metadata, "thing_dataset_id_to_contiguous_id"):
+            reverse_id_mapping = {v: k for k, v in metadata.thing_dataset_id_to_contiguous_id.items()}
+            reverse_id_mapper = lambda contiguous_id: reverse_id_mapping[contiguous_id]  # noqa
+        else:
+            reverse_id_mapper = lambda contiguous_id: contiguous_id  # noqa
+
+        categories = [
+            {"id": reverse_id_mapper(id), "name": name}
+            for id, name in enumerate(metadata.thing_classes)
+        ]
+        merged_dict['categories'] = categories
+        
         return merged_dict
+
+
     
     
     def run(self):

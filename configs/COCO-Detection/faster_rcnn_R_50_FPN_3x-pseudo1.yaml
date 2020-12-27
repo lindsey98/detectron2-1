@@ -1,0 +1,22 @@
+_BASE_: "../bases/Base-RCNN-FPN.yaml"
+
+MODEL:
+  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  ROI_HEADS:
+      NAME: 'ROIHeadsAL'
+  META_ARCHITECTURE: 'ActiveLearningRCNN'
+  
+SOLVER:
+  STEPS: (105000, 125000) # 2/3, 8/9
+  MAX_ITER: 135000
+  CHECKPOINT_PERIOD: 5000 # Saves checkpoint every number of steps
+  CHECKPOINT_PERIOD_LOSS: 10 # MAX_ITER/50 
+  
+DATASETS:
+  TRAIN: ("coco_2017_al_pseudo_round1",)
+  TEST: ("coco_2017_val",)
+  
+OUTPUT_DIR: "./output/coco_pseudo1/" # Specify output directory

@@ -34,17 +34,6 @@ class CusEvalHook(HookBase):
             assert isinstance(
                 results, dict
             ), "Eval function must return a dict. Got {} instead.".format(results)
-            # Do not log
-#             flattened_results = flatten_results_dict(results)
-#             for k, v in flattened_results.items():
-#                 try:
-#                     v = float(v)
-#                 except Exception as e:
-#                     raise ValueError(
-#                         "[EvalHook] eval_function should return a nested dict of float. "
-#                         "Got '{}: {}' instead.".format(k, v)
-#                     ) from e
-#             self.trainer.storage.put_scalars(**flattened_results, smoothing_hint=False)
 
         # Evaluation may take different time among workers.
         # A barrier make them start the next iteration together.

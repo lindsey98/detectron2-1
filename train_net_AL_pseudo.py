@@ -130,13 +130,15 @@ class Trainer(DefaultTrainer):
         logger.info("Length of dataset is: {}".format(len_dataset))
         
         # Collect all losses 
-        try:
+        if os.path.exists(cfg_copy.OUTPUT_DIR_LOSS):
             with open(cfg_copy.OUTPUT_DIR_LOSS, 'rt', encoding='UTF-8') as handle:
                 result_dict = json.load(handle)
-        except:
+            logger.info("Length of existing loss dict is: {}".format(len(result_dict.keys())))
+            logger.info("Each image_id has {} steps loss recorded".format(len(result_dict[list(result_dict.keys())[0]])))
+        else:
             result_dict = {}
             
-        
+                    
         total = len_dataset
         total_compute_time = 0
         start_time = time.perf_counter()
@@ -150,10 +152,10 @@ class Trainer(DefaultTrainer):
                 model.zero_grad() # zero-out gradients
                 loss_dict = model(data) 
                 losses = sum(loss_dict.values()).detach().cpu().item() # sum all 4 losses
-                if data[0]['image_id'] in result_dict.keys():
-                    result_dict[data[0]['image_id']].append(losses)
+                if str(data[0]['image_id']) in result_dict.keys():
+                    result_dict[str(data[0]['image_id'])].append(losses)
                 else:
-                    result_dict[data[0]['image_id']] = [losses]
+                    result_dict[str(data[0]['image_id'])] = [losses]
                     
                 total_compute_time += time.perf_counter() - start_compute_time
                 iters_after_start = i + 1
@@ -166,19 +168,20 @@ class Trainer(DefaultTrainer):
                     logging.INFO,
                     "Loss on Training done {}/{}. {:.4f} s / img. ETA={}".format(
                         i + 1, total, seconds_per_img, str(eta)
-                    ), n=60,
+                    ), n=120,
                 )
                     
                 # Break the infinite data stream
                 if i >= len_dataset - 1:
                     model.zero_grad()
                     break 
-            comm.synchronize()
                     
+        logger.info("Length of existing loss dict is: {}".format(len(result_dict.keys())))
+        logger.info("Each image_id has {} steps loss recorded".format(len(result_dict[list(result_dict.keys())[0]])))
         # Write loss dict 
         with open(cfg_copy.OUTPUT_DIR_LOSS, 'wt', encoding='UTF-8') as handle:
             json.dump(result_dict, handle)
-        logger.info("Finish all loss calculations at step {} and written to {} \n".format(step, cfg_copy.OUTPUT_DIR_LOSS))
+        logger.info("Finish all loss calculations and written to {} \n".format(cfg_copy.OUTPUT_DIR_LOSS))
 
         return result_dict
 

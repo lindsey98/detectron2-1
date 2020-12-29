@@ -14,10 +14,28 @@ from detectron2.data.datasets import register_coco_instances
 data_dir = Path("datasets/coco/train2017/")
 train_subset1_coco = "datasets/coco/annotations/instances_train2017_subset1.json"
 train_subset2_coco = "datasets/coco/annotations/instances_train2017_subset2.json"
+train_entropy_al = "datasets/coco/annotations/coco_2017_al_entropy_round1.json"
+train_perturb_al = "datasets/coco/annotations/coco_2017_al_perturbation_round1.json"
+train_random_al = "datasets/coco/annotations/coco_2017_al_random_round1.json"
+train_feature_emb_al = "datasets/coco/annotations/coco_2017_al_feature_emb_round1.json"
+train_pseudo_al = "datasets/coco/annotations/coco_2017_pseudo_round1_alonly.json"
+
 register_coco_instances("coco_2017_train_subset1", {}, train_subset1_coco, data_dir)
 register_coco_instances("coco_2017_train_subset2", {}, train_subset2_coco, data_dir)
 
 
+register_coco_instances("coco_2017_al_entropy_round1", {}, train_entropy_al, data_dir)
+
+register_coco_instances("coco_2017_al_random_round1", {}, train_random_al, data_dir)
+
+register_coco_instances("coco_2017_al_feature_emb_round1", {}, train_feature_emb_al, data_dir)
+
+register_coco_instances("coco_2017_al_perturbation_round1", {}, train_perturb_al, data_dir)
+
+register_coco_instances("coco_2017_al_pseudo_round1", {}, train_pseudo_al, data_dir)
+
+
+    
 def build_transform_gen(cfg, is_train):
     """
     Create a list of :class:`TransformGen` from config.

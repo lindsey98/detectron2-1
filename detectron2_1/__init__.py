@@ -1,1 +1,3 @@
-from . import datasets  # just to register datasets
+from .datasets import *
+from .scoring_utils import *
+from .utils import *

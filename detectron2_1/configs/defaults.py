@@ -104,6 +104,9 @@ _C.AL.TRAINING.EPOCHS_PER_ROUND_INITIAL = 500
 _C.AL.TRAINING.EPOCHS_PER_ROUND_DECAY = 'linear'
 _C.AL.TRAINING.EPOCHS_PER_ROUND_LAST = 50
 
+################Add output dir to log traning loss #############
+_C.OUTPUT_DIR_LOSS = _C.OUTPUT_DIR + '/training_loss.json'
+#############################################################
 
 ##############################################################
 ### Provide config support for newer version of Detectron2 ###
@@ -123,3 +126,7 @@ _C.SOLVER.CLIP_GRADIENTS.CLIP_VALUE = 1.0
 _C.SOLVER.CLIP_GRADIENTS.NORM_TYPE = 2.0
 _C.SOLVER.NESTEROV = False
 _C.SOLVER.REFERENCE_WORLD_SIZE = 0
+
+################ Add checkpoint period for loss #############
+_C.SOLVER.CHECKPOINT_PERIOD_LOSS = 1000
+###############################################################

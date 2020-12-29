@@ -217,6 +217,7 @@ class PseudoALDataset(MergeDataset):
         return coco_images, coco_annotations
 
     def _annot_reorder(self, merged_dict):
+        '''Reorder annotations'''
         ct = 0
         for annot in merged_dict["annotations"]:
             annot['id'] = ct + 1
@@ -251,7 +252,6 @@ class PseudoALDataset(MergeDataset):
         merged_dict['categories'] = categories
         
         return merged_dict
-
 
     
     

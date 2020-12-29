@@ -1,0 +1,132 @@
+import os
+import numpy as np
+from PIL import Image, ImageOps
+from torchvision import transforms
+import matplotlib.pyplot as plt
+from torch import nn
+import torch.nn.functional as F
+import torch
+from collections import OrderedDict
+
+def l2_norm(x):
+    '''L2 Normalization'''
+    if len(x.shape):
+        x = x.reshape((x.shape[0],-1))
+    return F.normalize(x, p=2, dim=1)
+
+
+def pred_siamese(img_path, model, imshow=False, title=None, path = True, grayscale=True):
+    img_size = 128
+    mean = [0.5, 0.5, 0.5]
+    std = [0.5, 0.5, 0.5]
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    img_transforms = transforms.Compose(
+        [transforms.ToTensor(),
+         transforms.Normalize(mean=mean, std=std),
+        ])
+
+    if path:
+        if grayscale:
+            img = Image.open(img_path).convert("L") 
+        else:
+            img = Image.open(img_path).convert("RGB")
+    else:
+        if grayscale:
+            img = img_path.convert("L")
+        else:
+            img = img_path.convert("RGB")
+
+    ## resize the image while keeping the original aspect ratio
+    if grayscale:
+        img = ImageOps.expand(img, (
+            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2, 
+            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2), fill=255)     
+    else:
+        img = ImageOps.expand(img, (
+            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2, 
+            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2), fill=(255, 255, 255))     
+
+    img = img.resize((img_size, img_size))
+    
+    if grayscale:
+        img = img.convert("RGB") # Open in grayscale, then convert back to 3 channels
+        
+    if imshow: ## plot the image
+        if grayscale:
+            plt.imshow(np.asarray(img), cmap='gray')
+        else:
+            plt.imshow(np.asarray(img))
+        plt.title(title)
+        plt.show()   
+        
+    # predict the embedding
+    with torch.no_grad():
+        img = img_transforms(img)
+        img = img[None, ...]
+        img = img.to(device)
+        logo_feat = model.features(img)
+        logo_feat = l2_norm(logo_feat).squeeze(0).cpu().numpy() # L2-normalization
+        
+    return logo_feat
+
+
+def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_path, gt_bbox, t_s=0.83, grayscale=False):
+    '''Return predicted brand for 1 cropped image'''
+
+    try:
+        img = Image.open(shot_path)
+    except OSError:  # if the image cannot be identified, return nothing
+        return None, None
+
+    ## get predicted box --> crop from screenshot
+    cropped = img.crop((gt_bbox[0], gt_bbox[1], gt_bbox[2], gt_bbox[3]))
+    img_feat = pred_siamese(cropped, model, imshow=False, title='Original rcnn box', path=False, grayscale=grayscale)
+
+    ## get cosine similarity with every protected logo
+    sim_list = logo_feat_list.dot(img_feat.T) # take dot product for two embeddings (Cosine Similarity)
+    pred_brand_list = file_name_list
+    
+    assert len(sim_list) == len(pred_brand_list)
+
+    ## get top 10 brands
+    idx = np.argsort(sim_list)[::-1][:10]
+    pred_brand_list = np.array(pred_brand_list)[idx]
+    sim_list = np.array(sim_list)[idx]
+
+    predicted_brand, predicted_domain = None, None
+    candidate_logo = Image.open(pred_brand_list[0])
+
+    ## If the largest similarity exceeds threshold 
+    if sim_list[0] >= t_s:  
+        predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])
+        predicted_domain = domain_map[predicted_brand]
+        final_sim = sim_list[0]
+    ## Else if not exeed, try resolution alignment, see if can improve
+    else:
+        cropped, candidate_logo = resolution_alignment(cropped, candidate_logo)
+        img_feat = pred_siamese(cropped, model, imshow=False, title=None, path=False, grayscale=grayscale)
+        logo_feat = pred_siamese(candidate_logo, model, imshow=False, title=None, path=False, grayscale=grayscale)
+        final_sim = logo_feat.dot(img_feat)
+        if final_sim >= t_s:
+            predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])
+            predicted_domain = domain_map[predicted_brand]
+
+    ## If no prediction, return None
+    if predicted_brand is None:  
+        return None, None
+    
+    ## If there is a prediction, do aspect ratio check 
+    else:
+        ratio_crop = cropped.size[0]/cropped.size[1]
+        ratio_logo = candidate_logo.size[0]/candidate_logo.size[1]
+        # aspect ratios of matched pair must not deviate by more than factor of 2
+        if max(ratio_crop, ratio_logo)/min(ratio_crop, ratio_logo) > 2: 
+            return None, None
+        # If pass aspect ratio check, report a match
+        else:
+            return predicted_brand, predicted_domain
+
+
+
+

@@ -1,0 +1,12 @@
+# configurations for layout similarity matching
+MODEL:
+  K: 3
+  box_sim_type: 3 # 1 for iou or 2 for dist 3 for boarder dist, 0 to disable
+  iou_type: 'diou'
+  weight_box_sim: 0.75 #TODO: change weight parameter
+
+THRESHOLD:
+  topo_neigh_ts: 0.75
+  topo_box_ts: 0.5
+  iou_box_ts: 0.5
+  dist_box_ts: 0.85

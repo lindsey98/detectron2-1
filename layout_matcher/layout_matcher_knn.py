@@ -2,10 +2,10 @@ import time
 import os
 import cv2
 import itertools
-from misc import read_coord, preprocess, load_yaml
+from .misc import read_coord, preprocess, load_yaml
 import shutil
-from topology import *
-from iou import *
+from .topology import *
+from .iou import *
 import numpy as np
 
 def match_pair(x, t_s):

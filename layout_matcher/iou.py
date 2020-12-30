@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from scipy.spatial.distance import cdist
-from misc import preprocess, read_coord
+from .misc import preprocess, read_coord
 import time
 import cv2
 

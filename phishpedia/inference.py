@@ -7,6 +7,7 @@ from torch import nn
 import torch.nn.functional as F
 import torch
 from collections import OrderedDict
+from .utils import brand_converter, resolution_alignment
 
 def l2_norm(x):
     '''L2 Normalization'''
@@ -15,7 +16,7 @@ def l2_norm(x):
     return F.normalize(x, p=2, dim=1)
 
 
-def pred_siamese(img_path, model, imshow=False, title=None, path = True, grayscale=True):
+def pred_siamese(img, model, imshow=False, title=None, grayscale=False):
     img_size = 128
     mean = [0.5, 0.5, 0.5]
     std = [0.5, 0.5, 0.5]
@@ -25,34 +26,20 @@ def pred_siamese(img_path, model, imshow=False, title=None, path = True, graysca
         [transforms.ToTensor(),
          transforms.Normalize(mean=mean, std=std),
         ])
+    
+    img = Image.open(img) if isinstance(img, str) else img
+    img = img.convert("L").convert("RGB") if grayscale else img.convert("RGB")
 
-    if path:
-        if grayscale:
-            img = Image.open(img_path).convert("L") 
-        else:
-            img = Image.open(img_path).convert("RGB")
-    else:
-        if grayscale:
-            img = img_path.convert("L")
-        else:
-            img = img_path.convert("RGB")
-
-    ## resize the image while keeping the original aspect ratio
-    if grayscale:
-        img = ImageOps.expand(img, (
+    ## Resize the image while keeping the original aspect ratio
+    pad_color = 255 if grayscale else (255, 255, 255)
+    img = ImageOps.expand(img, (
             (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2, 
-            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2), fill=255)     
-    else:
-        img = ImageOps.expand(img, (
-            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2, 
-            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2), fill=(255, 255, 255))     
-
+            (max(img.size) - img.size[0]) // 2, (max(img.size) - img.size[1]) // 2), fill=pad_color)     
+ 
     img = img.resize((img_size, img_size))
     
-    if grayscale:
-        img = img.convert("RGB") # Open in grayscale, then convert back to 3 channels
-        
-    if imshow: ## plot the image
+    ## Plot the image    
+    if imshow: 
         if grayscale:
             plt.imshow(np.asarray(img), cmap='gray')
         else:
@@ -60,13 +47,12 @@ def pred_siamese(img_path, model, imshow=False, title=None, path = True, graysca
         plt.title(title)
         plt.show()   
         
-    # predict the embedding
+    # Predict the embedding
     with torch.no_grad():
         img = img_transforms(img)
-        img = img[None, ...]
-        img = img.to(device)
+        img = img[None, ...].to(device)
         logo_feat = model.features(img)
-        logo_feat = l2_norm(logo_feat).squeeze(0).cpu().numpy() # L2-normalization
+        logo_feat = l2_norm(logo_feat).squeeze(0).cpu().numpy() # L2-normalization final shape is (2048,)
         
     return logo_feat
 
@@ -81,10 +67,11 @@ def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_pa
 
     ## get predicted box --> crop from screenshot
     cropped = img.crop((gt_bbox[0], gt_bbox[1], gt_bbox[2], gt_bbox[3]))
-    img_feat = pred_siamese(cropped, model, imshow=False, title='Original rcnn box', path=False, grayscale=grayscale)
+    img_feat = pred_siamese(cropped, model, imshow=False, title='Original rcnn box', grayscale=grayscale)
 
     ## get cosine similarity with every protected logo
-    sim_list = logo_feat_list.dot(img_feat.T) # take dot product for two embeddings (Cosine Similarity)
+    sim_list = logo_feat_list @ img_feat.T # take dot product for every pair of embeddings (Cosine Similarity)
+#     print(sim_list.shape)
     pred_brand_list = file_name_list
     
     assert len(sim_list) == len(pred_brand_list)
@@ -101,12 +88,13 @@ def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_pa
     if sim_list[0] >= t_s:  
         predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])
         predicted_domain = domain_map[predicted_brand]
-        final_sim = sim_list[0]
+        final_sim = max(sim_list)
+        
     ## Else if not exeed, try resolution alignment, see if can improve
     else:
         cropped, candidate_logo = resolution_alignment(cropped, candidate_logo)
-        img_feat = pred_siamese(cropped, model, imshow=False, title=None, path=False, grayscale=grayscale)
-        logo_feat = pred_siamese(candidate_logo, model, imshow=False, title=None, path=False, grayscale=grayscale)
+        img_feat = pred_siamese(cropped, model, imshow=False, title=None, grayscale=grayscale)
+        logo_feat = pred_siamese(candidate_logo, model, imshow=False, title=None, grayscale=grayscale)
         final_sim = logo_feat.dot(img_feat)
         if final_sim >= t_s:
             predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])

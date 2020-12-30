@@ -1,8 +1,8 @@
-from layout_matcher_knn import *
+from .layout_matcher_knn import *
 import os
 import matplotlib.pyplot as plt
 import shutil
-from misc import read_coord, load_yaml
+from .misc import read_coord, load_yaml
 import argparse
 import numpy as np
 

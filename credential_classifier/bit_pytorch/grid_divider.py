@@ -5,19 +5,22 @@ import numpy as np
 # from utils import read_txt
 import os
 
-def read_img_reverse(img, coords: np.array, types: np.array, num_types=5, grid_num=10):
+def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tensor:
     '''
     Convert image with bbox predictions as into grid format
     '''
     
-    if not isinstance(img, np.ndarray):
-        img = cv2.imread(img)
-    else:
-        img = img
-
+    img = cv2.imread(img) if not isinstance(img, np.ndarray) else img
+    coords = coords.numpy() if not isinstance(coords, np.ndarray) else coords
+    types = types.numpy() if not isinstance(types, np.ndarray) else types
+    
+    # Incorrect path/empty image
     if img is None:
         raise AttributeError('Image is None')
+        
     height, width = img.shape[:2]
+    
+    # Empty image
     if height == 0 or width == 0:
         raise AttributeError('Empty image')
 
@@ -49,7 +52,7 @@ def read_img_reverse(img, coords: np.array, types: np.array, num_types=5, grid_n
 
         # one-hot encoding for type
         cls_arr = np.zeros(num_types)
-        cls_arr[type_dict[types[j]] - 1] = 1
+        cls_arr[types[j]] = 1
 
         grid_arrs[4:, assigned_grid_h, assigned_grid_w] = cls_arr
 

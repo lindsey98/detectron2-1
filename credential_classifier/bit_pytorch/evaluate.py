@@ -4,6 +4,46 @@ import numpy as np
 import bit_pytorch.models as models
 from bit_pytorch.dataloader import GetLoader
 
+def vis_helper(x):
+    fig = plt.figure(figsize=(20, 20))
+    ax = plt.subplot("331")
+    ax.set_title("X", fontsize=15)
+
+    ax.imshow(x[0].numpy() if not isinstance(x[0], np.ndarray) else x[0], cmap='gray')
+    ax = plt.subplot("332")
+    ax.set_title("Y", fontsize=15)
+
+    ax.imshow(x[1].numpy() if not isinstance(x[1], np.ndarray) else x[1], cmap='gray')
+    ax = plt.subplot("333")
+    ax.set_title("W", fontsize=15)
+
+    ax.imshow(x[2].numpy() if not isinstance(x[2], np.ndarray) else x[2], cmap='gray')
+    ax = plt.subplot("334")
+    ax.set_title("H", fontsize=15)
+
+    ax.imshow(x[3].numpy() if not isinstance(x[3], np.ndarray) else x[3], cmap='gray')
+    ax = plt.subplot("335")
+    ax.set_title("C1(logo)", fontsize=15)
+
+    ax.imshow(x[4].numpy() if not isinstance(x[4], np.ndarray) else x[4], cmap='gray')
+    ax = plt.subplot("336")
+    ax.set_title("C2(input)", fontsize=15)
+
+    ax.imshow(x[5].numpy() if not isinstance(x[5], np.ndarray) else x[5], cmap='gray')
+    ax = plt.subplot("337")
+    ax.set_title("C3(button)", fontsize=15)
+    ax.imshow(x[6].numpy() if not isinstance(x[6], np.ndarray) else x[6], cmap='gray')
+
+    ax = plt.subplot("338")
+    ax.set_title("C4(label)", fontsize=15)
+    ax.imshow(x[7].numpy() if not isinstance(x[7], np.ndarray) else x[7], cmap='gray')
+
+    ax = plt.subplot("339")
+    ax.set_title("C5(block)", fontsize=15)
+    ax.imshow(x[8].numpy() if not isinstance(x[8], np.ndarray) else x[8], cmap='gray')
+    
+    plt.show()
+    
 def evaluate(model, train_loader):
 
     model.eval()

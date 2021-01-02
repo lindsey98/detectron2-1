@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import torch
 from collections import OrderedDict
 from .utils import brand_converter, resolution_alignment
+import matplotlib.pyplot as plt
 
 def l2_norm(x):
     '''L2 Normalization'''
@@ -57,6 +58,7 @@ def pred_siamese(img, model, imshow=False, title=None, grayscale=False):
     return logo_feat
 
 
+
 def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_path, gt_bbox, t_s=0.83, grayscale=False):
     '''Return predicted brand for 1 cropped image'''
 
@@ -71,7 +73,6 @@ def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_pa
 
     ## get cosine similarity with every protected logo
     sim_list = logo_feat_list @ img_feat.T # take dot product for every pair of embeddings (Cosine Similarity)
-#     print(sim_list.shape)
     pred_brand_list = file_name_list
     
     assert len(sim_list) == len(pred_brand_list)
@@ -84,6 +85,7 @@ def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_pa
     predicted_brand, predicted_domain = None, None
     candidate_logo = Image.open(pred_brand_list[0])
 
+    
     ## If the largest similarity exceeds threshold 
     if sim_list[0] >= t_s:  
         predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])
@@ -111,9 +113,95 @@ def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_pa
         # aspect ratios of matched pair must not deviate by more than factor of 2
         if max(ratio_crop, ratio_logo)/min(ratio_crop, ratio_logo) > 2: 
             return None, None
+
         # If pass aspect ratio check, report a match
         else:
             return predicted_brand, predicted_domain
+
+
+
+def siamese_inference_debug(model, domain_map, logo_feat_list, file_name_list, shot_path, gt_bbox, t_s=0.83, grayscale=False):
+    '''Return predicted brand for 1 cropped image -- Debug version'''
+
+    try:
+        img = Image.open(shot_path)
+    except OSError:  # if the image cannot be identified, return nothing
+        return None, None
+
+    ## get predicted box --> crop from screenshot
+    cropped = img.crop((gt_bbox[0], gt_bbox[1], gt_bbox[2], gt_bbox[3]))
+    img_feat = pred_siamese(cropped, model, imshow=False, title='Original rcnn box', grayscale=grayscale)
+    
+    ###### Debug #########################################################################
+    pred_siamese(cropped, model, imshow=True, title='Original rcnn box', grayscale=grayscale)
+    ######################################################################################
+
+    ## get cosine similarity with every protected logo
+    sim_list = logo_feat_list @ img_feat.T # take dot product for every pair of embeddings (Cosine Similarity)
+    pred_brand_list = file_name_list
+    
+    assert len(sim_list) == len(pred_brand_list)
+
+    ## get top 10 brands
+    idx = np.argsort(sim_list)[::-1][:10]
+    pred_brand_list = np.array(pred_brand_list)[idx]
+    sim_list = np.array(sim_list)[idx]
+
+    predicted_brand, predicted_domain = None, None
+    candidate_logo = Image.open(pred_brand_list[0])
+
+    ###### Debug #########################################################################
+    plt.imshow(candidate_logo)
+    plt.title('Top1 similar logo in targetlist {} Similarity : {:.2f}'.format(brand_converter(pred_brand_list[0].split('/')[-2]), sim_list[0]))
+    plt.show()
+    ######################################################################################
+    
+    ## If the largest similarity exceeds threshold 
+    if sim_list[0] >= t_s:  
+        predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])
+        predicted_domain = domain_map[predicted_brand]
+        final_sim = max(sim_list)
+        
+    ## Else if not exeed, try resolution alignment, see if can improve
+    else:
+        cropped, candidate_logo = resolution_alignment(cropped, candidate_logo)
+        img_feat = pred_siamese(cropped, model, imshow=False, title=None, grayscale=grayscale)
+        logo_feat = pred_siamese(candidate_logo, model, imshow=False, title=None, grayscale=grayscale)
+        final_sim = logo_feat.dot(img_feat)
+        if final_sim >= t_s:
+            predicted_brand = brand_converter(pred_brand_list[0].split('/')[-2])
+            predicted_domain = domain_map[predicted_brand]
+            
+            ############ Debug ##############################################################
+            print("Pass resolution alignment")
+            ######################################################################################
+        ############### Debug ################################################################
+        else:
+            print("Not pass resolution alignment")
+        ######################################################################################
+
+    ## If no prediction, return None
+    if predicted_brand is None:  
+        return None, None
+    
+    ## If there is a prediction, do aspect ratio check 
+    else:
+        ratio_crop = cropped.size[0]/cropped.size[1]
+        ratio_logo = candidate_logo.size[0]/candidate_logo.size[1]
+        # aspect ratios of matched pair must not deviate by more than factor of 2
+        if max(ratio_crop, ratio_logo)/min(ratio_crop, ratio_logo) > 2: 
+            ############# Debug #################################################################
+            print("Not pass aspect ratio check")
+            ######################################################################################
+            return None, None
+
+        # If pass aspect ratio check, report a match
+        else:
+            ############# Debug ################################################################
+            print("Pass aspect ratio check")
+            ######################################################################################
+            return predicted_brand, predicted_domain
+
 
 
 

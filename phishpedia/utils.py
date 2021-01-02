@@ -80,5 +80,33 @@ def brand_converter(brand_name):
         return 'Raiffeisen Bank S.A.'
     elif brand_name == 'Twitter, Inc':
         return 'Twitter, Inc.'
+    elif brand_name == 'capital_one':
+        return 'Capital One Financial Corporation'
+    elif brand_name == 'la_banque_postale':
+        return 'La Banque postale'
+    elif brand_name == 'db':
+        return 'Deutsche Bank AG'
+    elif brand_name == 'Swiss Post' or brand_name == 'PostFinance':
+        return 'PostFinance'
+    elif brand_name == 'grupo_bancolombia':
+        return 'Bancolombia'
+    elif brand_name == 'barclays':
+        return 'Barclays Bank Plc'
+    elif brand_name == 'gov_uk':
+        return 'Government of the United Kingdom'
+    elif brand_name == 'Aruba S.p.A':
+        return 'Aruba S.p.A.'
+    elif brand_name == 'TSB Bank Plc':
+        return 'TSB Bank Limited'
+    elif brand_name == 'strato':
+        return 'Strato AG'
+    elif brand_name == 'cogeco':
+        return 'Cogeco'
+    elif brand_name == 'Canada Revenue Agency':
+        return 'Government of Canada'
+    elif brand_name == 'UniCredit Bulbank':
+        return 'UniCredit Bank Aktiengesellschaft'
+    elif brand_name == 'ameli_fr':
+        return 'French Health Insurance'
     else:
         return brand_name

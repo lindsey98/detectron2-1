@@ -61,7 +61,7 @@ def layout_heuristic(pred_boxes, pred_classes):
         
         # check if there are any nearby elements in vertical/horizontal directions
         nearby = nearby_check(boarder_dist_x, boarder_dist_y)
-        print('Nearby matrix:\n', nearby.astype('float'))
+#         print('Nearby matrix:\n', nearby.astype('float'))
         
         # if either is True --> nearby element
         pattern_ct_1 = np.sum(nearby.astype('float'))
@@ -78,7 +78,7 @@ def layout_heuristic(pred_boxes, pred_classes):
         nearby_1 = nearby_check(boarder_dist_x=boarder_dist_x, boarder_dist_y=boarder_dist_y, 
                                 direction='y', remove_diag=True)
         
-        print('Nearby input:\n', nearby_1.astype('float'))
+#         print('Nearby input:\n', nearby_1.astype('float'))
         # update pattern_ct
         pattern_ct_2 = np.sum(nearby_1.astype('float'))
         
@@ -91,7 +91,7 @@ def layout_heuristic(pred_boxes, pred_classes):
             
             nearby_2 = nearby_check(boarder_dist_x=boarder_dist_x_2, boarder_dist_y=boarder_dist_y_2, 
                                     direction='y')            
-            print('Nearby button around input:\n', nearby_2.astype('float'))
+#             print('Nearby button around input:\n', nearby_2.astype('float'))
             # There is no button below input: revert back to no pattern
             if np.sum(nearby_2.astype('float')) == 0:
                 pattern_ct_2 = 0

@@ -18,6 +18,15 @@ def l2_norm(x):
 
 
 def pred_siamese(img, model, imshow=False, title=None, grayscale=False):
+    '''
+    Inference for a single image
+    :param img: image path in str or image in PIL.Image
+    :param model: model to make inference
+    :param imshow: enable display of image or not
+    :param title: title of displayed image
+    :param grayscale: convert image to grayscale or not
+    :return feature embedding of shape (2048,)
+    '''
     img_size = 128
     mean = [0.5, 0.5, 0.5]
     std = [0.5, 0.5, 0.5]
@@ -59,8 +68,19 @@ def pred_siamese(img, model, imshow=False, title=None, grayscale=False):
 
 
 
-def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_path, gt_bbox, t_s=0.83, grayscale=False):
-    '''Return predicted brand for 1 cropped image'''
+def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_path:str, gt_bbox, t_s=0.83, grayscale=False):
+    '''
+    Return predicted brand for one cropped image
+    :param model: model to use
+    :param domain_map: brand-domain dictionary
+    :param logo_feat_list: reference logo feature embeddings
+    :param file_name_list: reference logo paths
+    :param shot_path: path to the screenshot
+    :param gt_bbox: 1x4 np.ndarray/list/tensor bounding box coords 
+    :param t_s: similarity threshold for siamese
+    :param grayscale: convert image(cropped) to grayscale or not
+    :return: predicted target, predicted target's domain
+    '''
 
     try:
         img = Image.open(shot_path)
@@ -121,7 +141,18 @@ def siamese_inference(model, domain_map, logo_feat_list, file_name_list, shot_pa
 
 
 def siamese_inference_debug(model, domain_map, logo_feat_list, file_name_list, shot_path, gt_bbox, t_s=0.83, grayscale=False):
-    '''Return predicted brand for 1 cropped image -- Debug version'''
+    '''
+    Debug version: Return predicted brand for one cropped image
+    :param model: model to use
+    :param domain_map: brand-domain dictionary
+    :param logo_feat_list: reference logo feature embeddings
+    :param file_name_list: reference logo paths
+    :param shot_path: path to the screenshot
+    :param gt_bbox: 1x4 np.ndarray/list/tensor bounding box coords 
+    :param t_s: similarity threshold for siamese
+    :param grayscale: convert image(cropped) to grayscale or not
+    :return: predicted target, predicted target's domain
+    '''
 
     try:
         img = Image.open(shot_path)

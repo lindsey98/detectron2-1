@@ -2,6 +2,12 @@ from PIL import Image
 import math
 
 def resolution_alignment(img1, img2):
+    '''
+    Resize two images according to the minimum resolution between the two
+    :param img1: first image in PIL.Image
+    :param img2: second image in PIL.Image
+    :return: resized img1 in PIL.Image, resized img2 in PIL.Image
+    '''
     w1, h1 = img1.size
     w2, h2 = img2.size
     w_min, h_min = min(w1, w2), min(h1, h2)
@@ -16,6 +22,9 @@ def resolution_alignment(img1, img2):
     return img1_resize, img2_resize                 
 
 def brand_converter(brand_name):
+    '''
+    Helper function to deal with inconsistency in brand naming
+    '''
     if brand_name == 'Adobe Inc.' or brand_name == 'Adobe Inc':
         return 'Adobe'
     elif brand_name == 'ADP, LLC' or brand_name == 'ADP, LLC.':
@@ -78,7 +87,7 @@ def brand_converter(brand_name):
         return 'Azul'
     elif brand_name == 'Raiffeisen Bank S.A':
         return 'Raiffeisen Bank S.A.'
-    elif brand_name == 'Twitter, Inc':
+    elif brand_name == 'Twitter, Inc' or brand_name == 'Twitter':
         return 'Twitter, Inc.'
     elif brand_name == 'capital_one':
         return 'Capital One Financial Corporation'
@@ -108,5 +117,7 @@ def brand_converter(brand_name):
         return 'UniCredit Bank Aktiengesellschaft'
     elif brand_name == 'ameli_fr':
         return 'French Health Insurance'
+    elif brand_name == 'Banco de Credito del Peru':
+        return 'bcp'
     else:
         return brand_name

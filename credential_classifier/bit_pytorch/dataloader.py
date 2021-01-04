@@ -11,6 +11,9 @@ from PIL import Image
 import cv2
 
 class GetLoader(data.Dataset):
+    '''
+    Define customized dataloader
+    '''
 
     def __init__(self, img_folder: str, annot_path: str):
         self.img_folder = img_folder

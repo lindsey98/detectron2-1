@@ -45,6 +45,11 @@ def vis_helper(x):
     plt.show()
     
 def evaluate(model, train_loader):
+    '''
+    :param model: model to be evaluated
+    :param train_loader: dataloader to be evaluated
+    :return: classification acc
+    '''
 
     model.eval()
     # num_ones = 0

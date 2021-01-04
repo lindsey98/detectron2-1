@@ -8,6 +8,12 @@ import os
 def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tensor:
     '''
     Convert image with bbox predictions as into grid format
+    :param img: image path in str or image in np.ndarray
+    :param coords: Nx4 tensor/np.ndarray for box coords
+    :param types: Nx1 tensor/np.ndarray for box types (logo, input etc.)
+    :param num_types: total number of box types
+    :param grid_num: number of grids needed
+    :return: grid tensor
     '''
     
     img = cv2.imread(img) if not isinstance(img, np.ndarray) else img
@@ -58,12 +64,20 @@ def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tens
 
     return torch.from_numpy(grid_arrs)
 
-def read_img(img, coords: np.array, types: np.array, num_types=5, grid_num=10):
+def read_img(img, coords, types, num_types=5, grid_num=10):
+    '''
+    Convert image with bbox predictions as into grid format
+    :param img: image path in str or image in np.ndarray
+    :param coords: Nx4 tensor/np.ndarray for box coords
+    :param types: Nx1 tensor/np.ndarray for box types (logo, input etc.)
+    :param num_types: total number of box types
+    :param grid_num: number of grids needed
+    :return: grid tensor
+    '''
     
-    if not isinstance(img, np.ndarray):
-        img = cv2.imread(img)
-    else:
-        img = img
+    img = cv2.imread(img) if not isinstance(img, np.ndarray) else img
+    coords = coords.numpy() if not isinstance(coords, np.ndarray) else coords
+    types = types.numpy() if not isinstance(types, np.ndarray) else types
 
     if img is None:
         raise AttributeError('Image is None')

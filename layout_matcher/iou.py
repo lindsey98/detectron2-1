@@ -26,6 +26,32 @@ def bbox_dist(bboxes1, bboxes2):
     sim = 1. - dist/200.
     return sim
 
+def bbox_boarder_dist_simple(bboxes1, bboxes2):
+    '''
+    Compute boarder distance simple version
+    :param bboxes1: Nx4
+    :param bboxes2: Mx4
+    :return xd_mat: NxM boarder distance matrix in horizontal direction
+    :return yd_mat: NxM boarder distance matrix in vertical direction
+    '''
+    x11, y11, x12, y12 = np.split(bboxes1, 4, axis=1)
+    x21, y21, x22, y22 = np.split(bboxes2, 4, axis=1)
+
+    # compute boarder distance distance in x dimension
+    xd1 = np.subtract(x12, np.transpose(x21))
+    xd2 = np.subtract(x11, np.transpose(x22))
+    xd_mat = np.add(np.multiply(np.less(xd1, np.zeros_like(xd1)).astype('float'), np.abs(xd1)),
+                    np.multiply(np.greater(xd2, np.zeros_like(xd2)).astype('float'), xd2))
+
+    # compute boarder distance distance in y dimension
+    yd1 = np.subtract(y12, np.transpose(y21))
+    yd2 = np.subtract(y11, np.transpose(y22))
+    yd_mat = np.add(np.multiply(np.less(yd1, np.zeros_like(yd1)).astype('float'), np.abs(yd1)),
+                    np.multiply(np.greater(yd2, np.zeros_like(yd2)).astype('float'), yd2))
+
+    return xd_mat, yd_mat
+
+
 def bbox_boarder_dist(bboxes1, bboxes2):
     '''
     Compute boarder distance

@@ -53,7 +53,7 @@ def layout_heuristic(pred_boxes, pred_classes):
     # find label input * >=2
     # pattern
     pattern_ct_1 = 0
-    if len(labels) == 0 or len(inputs) == 0: # no box 
+    if len(labels) <= 1 or len(inputs) <= 1: # no box/too few boxes
         pass
     else:
         boarder_dist_x, boarder_dist_y = bbox_boarder_dist_simple(labels, inputs)
@@ -70,7 +70,7 @@ def layout_heuristic(pred_boxes, pred_classes):
     #      button
     # pattern  
     pattern_ct_2 = 0
-    if len(inputs) == 0 or len(buttons) == 0:
+    if len(inputs) <= 1 or len(buttons) == 0: # no box/too few boxes
         pass
     else:    
         boarder_dist_x, boarder_dist_y = bbox_boarder_dist_simple(inputs, inputs)
@@ -97,4 +97,4 @@ def layout_heuristic(pred_boxes, pred_classes):
                 pattern_ct_2 = 0
     
     # take the maximum
-    return max(pattern_ct_1, pattern_ct_2) 
+    return max(pattern_ct_1, pattern_ct_2), len(inputs)

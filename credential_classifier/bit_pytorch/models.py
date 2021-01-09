@@ -265,6 +265,13 @@ class FCMaxPool(nn.Module):
         self.grid_num = grid_num
         self.input_ch_size = input_ch_size
 
+    def features(self, x):
+        x = self.pool(x)
+        x = x.view(-1, self.input_ch_size * (self.grid_num//2) * (self.grid_num//2))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return x
+    
     def forward(self, x):
         x = self.pool(x)
         x = x.view(-1, self.input_ch_size * (self.grid_num//2) * (self.grid_num//2))

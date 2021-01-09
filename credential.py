@@ -41,3 +41,28 @@ def credential_classifier(img:str, coords, types, model):
         conf = conf.item()
         
     return pred, conf
+
+
+def credential_classifier_al(img:str, coords, types, model):
+    '''
+    Run credential classifier for AL dataset
+    :param img: path to image
+    :param coords: torch.Tensor/np.ndarray Nx4 bbox coords
+    :param types: torch.Tensor/np.ndarray Nx4 bbox types
+    :param model: classifier 
+    :return pred: predicted class 'credential': 0, 'noncredential': 1
+    :return conf: torch.Tensor NxC prediction confidence
+    '''
+    # process it into grid_array
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    grid_arr = read_img_reverse(img, coords, types)
+    assert grid_arr.shape == (9, 10, 10) # ensure correct shape
+    
+    # inference
+    with torch.no_grad():
+        pred_features = model.features(grid_arr.type(torch.float).to(device))
+        pred_orig = model(grid_arr.type(torch.float).to(device))
+        pred = F.softmax(pred_orig, dim=-1).argmax(dim=-1).item() # 'credential': 0, 'noncredential': 1
+        conf= F.softmax(pred_orig, dim=-1).detach().cpu()
+        
+    return pred, conf, pred_features

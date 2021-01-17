@@ -86,7 +86,7 @@ def bbox_overlaps_iou(bboxes1, bboxes2, type):
     :param bboxes1: Nx4
     :param bboxes2: Mx4
     :param type: iou type
-    :return: iou similarity matrix
+    :return: NxM iou similarity matrix 
     '''
     assert type in ['iou', 'giou', 'diou', 'ciou']
     x11, y11, x12, y12 = np.split(bboxes1, 4, axis=1)

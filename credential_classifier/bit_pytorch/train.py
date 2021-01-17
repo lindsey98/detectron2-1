@@ -31,10 +31,10 @@ import bit_pytorch.models as models
 import bit_common
 import bit_hyperrule
 
-from .dataloader import GetLoader
+from .dataloader import GetLoader, ImageLoader
 from torch.utils.tensorboard import SummaryWriter
 import os
-
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
 def recycle(iterable):
     """Variant of itertools.cycle that does not save iterates."""
@@ -46,11 +46,11 @@ def recycle(iterable):
 def mktrainval(args, logger):
 
     """Returns train and validation datasets."""
-    train_set = GetLoader(img_folder='./data/train_imgs',
-                                                annot_path='./data/train_coords.txt')
+    train_set = ImageLoader(img_folder='../datasets/train_imgs',
+                            annot_path='../datasets/train_coords.txt')
 
-    val_set = GetLoader(img_folder='./data/val_imgs',
-                                             annot_path='./data/val_coords.txt')
+    val_set = ImageLoader(img_folder='../datasets/val_imgs',
+                          annot_path='../datasets/val_coords.txt')
 
     if args.examples_per_class is not None:
         logger.info(f"Looking for {args.examples_per_class} images per class...")
@@ -62,7 +62,7 @@ def mktrainval(args, logger):
     logger.info(f"Num of classes: {len(val_set.classes)}")
 
     valid_loader = torch.utils.data.DataLoader(
-            val_set, batch_size=512, shuffle=False,
+            val_set, batch_size=args.batch, shuffle=False,
             num_workers=args.workers, pin_memory=True, drop_last=False)
 
     train_loader = torch.utils.data.DataLoader(
@@ -110,32 +110,41 @@ def main(args):
     logger.info(f"Going to train on {device}")
 
     train_set, valid_set, train_loader, valid_loader = mktrainval(args, logger)
-    model = models.KNOWN_MODELS[args.model](head_size=len(valid_set.classes), grid_num=10)
+    model = models.KNOWN_MODELS[args.model](head_size=len(valid_set.classes))
 
     # Note: no weight-decay!
     step = 0
     optim = torch.optim.SGD(model.parameters(), lr=args.base_lr, momentum=0.9)
-
+    
+    # If pretrained weights are specified
+    if args.weights_path:
+        logger.info("Loading weights from {}".format(args.weights_path))
+        checkpoint = torch.load(args.weights_path, map_location="cpu")
+        # New task might have different classes; remove the pretrained classifier weights
+        del checkpoint['model']['module.head.conv.weight']
+        del checkpoint['model']['module.head.conv.bias']
+        model.load_state_dict(checkpoint["model"], strict=False)
+        
     # Resume fine-tuning if we find a saved model.
     savename = pjoin(args.logdir, args.name, "{}_{}.pth.tar".format(args.model, str(args.base_lr)))
-    # try:
-    #     checkpoint = torch.load(savename, map_location="cpu")
-    #     logger.info(f"Found saved model to resume from at '{savename}'")
-    #     step = checkpoint["step"]
-    #     model.load_state_dict(checkpoint["model"])
-    #     optim.load_state_dict(checkpoint["optim"])
-    #     logger.info(f"Resumed at step {step}")
-    # except FileNotFoundError:
-    #     logger.info("Training from scratch")
+    try:
+        checkpoint = torch.load(savename, map_location="cpu")
+        logger.info(f"Found saved model to resume from at '{savename}'")
+        step = checkpoint["step"]
+        model.load_state_dict(checkpoint["model"])
+        optim.load_state_dict(checkpoint["optim"])
+        logger.info(f"Resumed at step {step}")
+    except FileNotFoundError:
+        logger.info("Training from scratch")
 
     # Print out the model summary
     model = model.to(device)
-    summary(model, (9, 10, 10))
+#     summary(model, (3, 1000, 1000))
 
     # Add model graph
-    dummy_input = torch.rand(1, 9, 10, 10, device=device)
-    writer.add_graph(model, dummy_input)
-    writer.flush()
+#     dummy_input = torch.rand(1, 3, 1000, 1000, device=device)
+#     writer.add_graph(model, dummy_input)
+#     writer.flush()
 
     # Start training
     model.train()
@@ -190,18 +199,18 @@ def main(args):
         # ...log the gradients/weights
         writer.add_scalar('training_loss',    c_num, step)
         writer.flush()
-        writer.add_histogram('model.fc1.weights', model.fc1.weight.data,step)
-        writer.flush()
-        writer.add_histogram('model.fc2.weights', model.fc2.weight.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc3.weights', model.fc3.weight.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc1.grad', model.fc1.weight.grad.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc2.grad', model.fc2.weight.grad.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc3.grad', model.fc3.weight.grad.data, step)
-        writer.flush()
+#         writer.add_histogram('model.fc1.weights', model.fc1.weight.data,step)
+#         writer.flush()
+#         writer.add_histogram('model.fc2.weights', model.fc2.weight.data, step)
+#         writer.flush()
+#         writer.add_histogram('model.fc3.weights', model.fc3.weight.data, step)
+#         writer.flush()
+#         writer.add_histogram('model.fc1.grad', model.fc1.weight.grad.data, step)
+#         writer.flush()
+#         writer.add_histogram('model.fc2.grad', model.fc2.weight.grad.data, step)
+#         writer.flush()
+#         writer.add_histogram('model.fc3.grad', model.fc3.weight.grad.data, step)
+#         writer.flush()
 
         # Get train_acc every 1 epoch
         if step % (len(train_set)//args.batch) == 0:

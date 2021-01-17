@@ -47,7 +47,7 @@ class ImageLoader(data.Dataset):
         self.annot_path = annot_path
         self.num_imgs, self.labels, self.paths, self.preprocess_coordinates, self.img_classes = read_txt(annot_path)
         self.classes = {'credential': 0, 'noncredential': 1}
-        self.transform = transform.Compose([transform.Resize((1000, 1000)),
+        self.transform = transform.Compose([transform.Resize((256, 256)),
                                             transform.ToTensor()])
 
     def __getitem__(self, item: int):

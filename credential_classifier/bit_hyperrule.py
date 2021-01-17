@@ -27,7 +27,8 @@ known_dataset_sizes = {
   # TODO: Specify image size of custom dataset here
   'logo_2k': (95, 95),
   'targetlist': (95, 95),
-  'web':(10, 10)
+  'web':(10, 10),
+  'screenshot': (256,256)
 }
 
 

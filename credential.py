@@ -1,5 +1,6 @@
 from credential_classifier.bit_pytorch.models import FCMaxPool
 from credential_classifier.bit_pytorch.grid_divider import read_img_reverse
+from layout_matcher.heuristic import layout_heuristic
 import torch
 import torch.nn.functional as F
 
@@ -28,19 +29,29 @@ def credential_classifier(img:str, coords, types, model):
     :return pred: predicted class 'credential': 0, 'noncredential': 1
     :return conf: prediction confidence
     '''
-    # process it into grid_array
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    grid_arr = read_img_reverse(img, coords, types)
-    assert grid_arr.shape == (9, 10, 10) # ensure correct shape
-    
-    # inference
-    with torch.no_grad():
-        pred_orig = model(grid_arr.type(torch.float).to(device))
-        pred = F.softmax(pred_orig, dim=-1).argmax(dim=-1).item() # 'credential': 0, 'noncredential': 1
-        conf, _ = torch.max(F.softmax(pred_orig, dim=-1), dim=-1)
-        conf = conf.item()
+
+    # credential heuristic
+    pattern_ct, len_input = layout_heuristic(coords, types)
+    if len_input == 0:
+        pred = 1 # if there is not input box, noncredential
+    elif pattern_ct >= 2:
+        pred = 0 # if pattern is found, credential
+    # credential classifier
+    else:
+        # process it into grid_array
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        grid_arr = read_img_reverse(img, coords, types)
+        assert grid_arr.shape == (9, 10, 10) # ensure correct shape
+
+        # inference
+        with torch.no_grad():
+            pred_orig = model(grid_arr.type(torch.float).to(device))
+            pred = F.softmax(pred_orig, dim=-1).argmax(dim=-1).item() # 'credential': 0, 'noncredential': 1
+#             conf, _ = torch.max(F.softmax(pred_orig, dim=-1), dim=-1)
+#             conf = conf.item()
         
-    return pred, conf
+#     return pred, conf
+    return pred
 
 
 def credential_classifier_al(img:str, coords, types, model):

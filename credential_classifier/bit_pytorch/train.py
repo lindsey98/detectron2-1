@@ -24,14 +24,15 @@ import torch
 import torchvision as tv
 from torchsummary import summary
 
-import bit_pytorch.fewshot as fs
-import bit_pytorch.lbtoolbox as lb
+# import .fewshot as fs
+# import .lbtoolbox as lb
+import os
 import bit_pytorch.models as models
 
 import bit_common
 import bit_hyperrule
 
-from .dataloader import GetLoader, ImageLoader
+from bit_pytorch.dataloader import GetLoader, ImageLoader
 from torch.utils.tensorboard import SummaryWriter
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
@@ -46,11 +47,18 @@ def recycle(iterable):
 def mktrainval(args, logger):
 
     """Returns train and validation datasets."""
-    train_set = ImageLoader(img_folder='../datasets/train_imgs',
-                            annot_path='../datasets/train_coords.txt')
+#     train_set = ImageLoader(img_folder='../datasets/train_imgs',
+#                             annot_path='../datasets/train_coords.txt')
 
-    val_set = ImageLoader(img_folder='../datasets/val_imgs',
-                          annot_path='../datasets/val_coords.txt')
+#     val_set = ImageLoader(img_folder='../datasets/val_imgs',
+#                           annot_path='../datasets/val_coords.txt')
+
+    train_set = GetLoader(img_folder='../datasets/train_imgs',
+                          annot_path='../datasets/train_coords.txt')
+
+    val_set = GetLoader(img_folder='../datasets/val_imgs',
+                         annot_path='../datasets/val_coords.txt')
+
 
     if args.examples_per_class is not None:
         logger.info(f"Looking for {args.examples_per_class} images per class...")
@@ -82,8 +90,8 @@ def run_eval(model, data_loader, device, logger, step):
     total = 0
     for b, (x, y) in enumerate(data_loader):
         with torch.no_grad():
-            x = x.to(device, non_blocking=True, dtype=torch.float)
-            y = y.to(device, non_blocking=True, dtype=torch.long)
+            x = x.to(device, dtype=torch.float)
+            y = y.to(device, dtype=torch.long)
 
             # Compute output, measure accuracy
             logits = model(x)
@@ -106,11 +114,14 @@ def main(args):
     # Only good if sizes stay the same within the main loop!
     torch.backends.cudnn.benchmark = True
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Going to train on {device}")
 
     train_set, valid_set, train_loader, valid_loader = mktrainval(args, logger)
     model = models.KNOWN_MODELS[args.model](head_size=len(valid_set.classes))
+    
+#     logger.info("Moving model onto all GPUs")
+#     model = torch.nn.DataParallel(model)
 
     # Note: no weight-decay!
     step = 0
@@ -139,12 +150,12 @@ def main(args):
 
     # Print out the model summary
     model = model.to(device)
-#     summary(model, (3, 1000, 1000))
+    summary(model, (9, 10, 10))
 
     # Add model graph
-#     dummy_input = torch.rand(1, 3, 1000, 1000, device=device)
-#     writer.add_graph(model, dummy_input)
-#     writer.flush()
+    dummy_input = torch.rand(1, 9, 10, 10, device=device)
+    writer.add_graph(model, dummy_input)
+    writer.flush()
 
     # Start training
     model.train()
@@ -199,18 +210,18 @@ def main(args):
         # ...log the gradients/weights
         writer.add_scalar('training_loss',    c_num, step)
         writer.flush()
-#         writer.add_histogram('model.fc1.weights', model.fc1.weight.data,step)
-#         writer.flush()
-#         writer.add_histogram('model.fc2.weights', model.fc2.weight.data, step)
-#         writer.flush()
-#         writer.add_histogram('model.fc3.weights', model.fc3.weight.data, step)
-#         writer.flush()
-#         writer.add_histogram('model.fc1.grad', model.fc1.weight.grad.data, step)
-#         writer.flush()
-#         writer.add_histogram('model.fc2.grad', model.fc2.weight.grad.data, step)
-#         writer.flush()
-#         writer.add_histogram('model.fc3.grad', model.fc3.weight.grad.data, step)
-#         writer.flush()
+        writer.add_histogram('model.fc1.weights', model.fc1.weight.data,step)
+        writer.flush()
+        writer.add_histogram('model.fc2.weights', model.fc2.weight.data, step)
+        writer.flush()
+        writer.add_histogram('model.fc3.weights', model.fc3.weight.data, step)
+        writer.flush()
+        writer.add_histogram('model.fc1.grad', model.fc1.weight.grad.data, step)
+        writer.flush()
+        writer.add_histogram('model.fc2.grad', model.fc2.weight.grad.data, step)
+        writer.flush()
+        writer.add_histogram('model.fc3.grad', model.fc3.weight.grad.data, step)
+        writer.flush()
 
         # Get train_acc every 1 epoch
         if step % (len(train_set)//args.batch) == 0:

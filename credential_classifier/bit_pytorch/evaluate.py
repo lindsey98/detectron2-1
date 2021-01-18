@@ -1,9 +1,10 @@
 
 import torch
 import numpy as np
-import bit_pytorch.models as models
-from bit_pytorch.dataloader import GetLoader, ImageLoader
+# import bit_pytorch.models as models
+# from bit_pytorch.dataloader import GetLoader, ImageLoader
 import os
+import matplotlib.pyplot as plt
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 def vis_helper(x):
@@ -78,12 +79,12 @@ def evaluate(model, train_loader):
 
 if __name__ == '__main__':
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    model = models.KNOWN_MODELS['BiT-M-R50x1'](head_size=2)
-    checkpoint = torch.load('./output/screenshot/screenshot/BiT-M-R50x1_0.001.pth.tar', map_location="cpu")
+    model = models.KNOWN_MODELS['FCMax'](head_size=2)
+    checkpoint = torch.load('FCMax_0.05.pth.tar', map_location="cpu")
     model.load_state_dict(checkpoint["model"])
     model.to(device)
 
-    val_set = ImageLoader(img_folder='../datasets/val_imgs',
+    val_set = GetLoader(img_folder='../datasets/val_imgs',
                           annot_path='../datasets/val_coords.txt')
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=8, drop_last=False, shuffle=False)
 

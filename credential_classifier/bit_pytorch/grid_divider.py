@@ -45,7 +45,7 @@ def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tens
 
         # if this grid has been assigned before, check whether need to re-assign
         if grid_arrs[0, assigned_grid_h, assigned_grid_w] != 0: # visted
-            exist_type = np.where(grid_arrs[:, assigned_grid_h, assigned_grid_w] == 1)[0][0] - 3
+            exist_type = np.where(grid_arrs[:, assigned_grid_h, assigned_grid_w] == 1)[0][0] - 4
             new_type = types[j]
             if new_type > exist_type: # if new type has lower priority than existing type
                 continue
@@ -64,7 +64,7 @@ def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tens
 
     return torch.from_numpy(grid_arrs)
 
-def read_img(img, coords, types, num_types=5, grid_num=10):
+def read_img(img_path, coords, types, num_types=5, grid_num=10):
     '''
     Convert image with bbox predictions as into grid format
     :param img: image path in str or image in np.ndarray
@@ -75,7 +75,7 @@ def read_img(img, coords, types, num_types=5, grid_num=10):
     :return: grid tensor
     '''
     
-    img = cv2.imread(img) if not isinstance(img, np.ndarray) else img
+    img = cv2.imread(img_path) if not isinstance(img_path, np.ndarray) else img_path
     coords = coords.numpy() if not isinstance(coords, np.ndarray) else coords
     types = types.numpy() if not isinstance(types, np.ndarray) else types
 

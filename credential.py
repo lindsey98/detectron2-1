@@ -36,33 +36,6 @@ def credential_config_screenshot(checkpoint):
     model.eval()
     return model
 
-def credential_classifier_screenshot(img:str, coords, types, model):
-    '''
-    Run credential classifier on screenshot
-    :param img: path to image
-    :param coords: torch.Tensor/np.ndarray Nx4 bbox coords
-    :param types: torch.Tensor/np.ndarray Nx4 bbox types
-    :param model: classifier 
-    :return pred: predicted class 'credential': 0, 'noncredential': 1
-    :return conf: prediction confidence
-    '''
-
-    # process it into grid_array
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    img = Image.open(img)
-    
-    # transform to tensor
-    transformation = transform.Compose([transform.Resize((256, 256)), 
-                                   transform.ToTensor()])
-    image = transformation(img)
-
-    # inference
-    with torch.no_grad():
-        pred_orig = model(image[None,...].to(device, dtype=torch.float))
-        assert pred_orig.shape[-1] == 2 ## assert correct shape
-        pred = F.softmax(pred_orig, dim=-1).argmax(dim=-1).item() # 'credential': 0, 'noncredential': 1
-        
-    return pred
 
 def credential_classifier(img:str, coords, types, model):
     '''
@@ -90,6 +63,35 @@ def credential_classifier(img:str, coords, types, model):
 #     return pred, conf
     return pred
 
+def credential_classifier_screenshot(img:str, coords, types, model):
+    '''
+    Run credential classifier on screenshot
+    :param img: path to image
+    :param coords: torch.Tensor/np.ndarray Nx4 bbox coords
+    :param types: torch.Tensor/np.ndarray Nx4 bbox types
+    :param model: classifier 
+    :return pred: predicted class 'credential': 0, 'noncredential': 1
+    :return conf: prediction confidence
+    '''
+
+    # process it into grid_array
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    img = Image.open(img).convert('RGB')
+    
+    # transform to tensor
+    transformation = transform.Compose([transform.Resize((256, 256)), 
+                                        transform.ToTensor()])
+    image = transformation(img)
+
+    # inference
+    with torch.no_grad():
+        pred_orig = model(image[None,...].to(device, dtype=torch.float))
+        assert pred_orig.shape[-1] == 2 ## assert correct shape
+        pred = F.softmax(pred_orig, dim=-1).argmax(dim=-1).item() # 'credential': 0, 'noncredential': 1
+        
+    return pred
+
+
 
 def credential_classifier_al(img:str, coords, types, model):
     '''
@@ -103,13 +105,17 @@ def credential_classifier_al(img:str, coords, types, model):
     '''
     # process it into grid_array
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    grid_arr = read_img_reverse(img, coords, types)
-    assert grid_arr.shape == (9, 10, 10) # ensure correct shape
+    img = Image.open(img).convert('RGB')
+    
+    # transform to tensor
+    transformation = transform.Compose([transform.Resize((256, 256)), 
+                                        transform.ToTensor()])
+    image = transformation(img)
     
     # inference
     with torch.no_grad():
-        pred_features = model.features(grid_arr.type(torch.float).to(device))
-        pred_orig = model(grid_arr.type(torch.float).to(device))
+        pred_features = model.features(image[None,...].to(device, dtype=torch.float))
+        pred_orig = model(image[None,...].to(device, dtype=torch.float))
         pred = F.softmax(pred_orig, dim=-1).argmax(dim=-1).item() # 'credential': 0, 'noncredential': 1
         conf= F.softmax(pred_orig, dim=-1).detach().cpu()
         

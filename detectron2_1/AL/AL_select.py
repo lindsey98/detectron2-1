@@ -33,8 +33,9 @@ def kmeans_plus(S, feat, N):
     
     # compute similarity matrix --> convert to cosine distance
     feat = F.normalize(torch.from_numpy(feat), dim=1, p=2).numpy()
-    D = 1 - feat @ feat.T # nxn
+    D = 1 - feat @ feat.T # nxn, this step would be slow if n is large
     D = np.clip(D, a_min=0., a_max=1.) # assure correct range
+    print("Similarity computation finished")
 
     # randomly find first centroid
     c0 = random.sample(range(len(S)), 1)[0]
@@ -77,8 +78,9 @@ def core_set(S, feat, N):
     
     # compute similarity matrix --> convert to cosine distance
     feat = F.normalize(torch.from_numpy(feat), dim=1, p=2).numpy()
-    D = 1 - feat @ feat.T # nxn
+    D = 1 - feat @ feat.T # nxn, this step would be slow if n is large
     D = np.clip(D, a_min=0., a_max=1.) # assure correct range
+    print("Similarity computation finished")
 
     # randomly find first centroid
     c0 = random.sample(range(len(S)), 1)[0]

@@ -67,3 +67,20 @@ def get_lr(step, dataset_size, base_lr):
       if s < step:
         base_lr /= 10
     return base_lr
+
+################## Schedule designed for finetuning ###################################################### 
+
+def get_schedule_finetune(dataset_size, batch_size):
+    epoch_steps = dataset_size // batch_size # one epoch takes xxx iterations
+    return [epoch_steps*5] # only finetune for 5 epochs
+
+def get_lr_finetune(step, dataset_size, base_lr, batch_size):
+  """Returns learning-rate for `step` or None at the end."""
+  supports = get_schedule_finetune(dataset_size, batch_size)
+  # Do not use learning rate warmup
+  if step < supports[0]:
+    return base_lr
+  # End of training
+  else:
+    return None
+

@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 # from utils import read_txt
 import os
+import math
 
 def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tensor:
     '''
@@ -42,7 +43,11 @@ def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tens
 
         # get the assigned grid index
         assigned_grid_w, assigned_grid_h = int(((x1 + x2)/2) // (width // grid_num)), int(((y1 + y2)/2) // (height // grid_num))
-
+        
+        # bound above
+        assigned_grid_w = min(grid_num-1, assigned_grid_w)
+        assigned_grid_h = min(grid_num-1, assigned_grid_h)
+        
         # if this grid has been assigned before, check whether need to re-assign
         if grid_arrs[0, assigned_grid_h, assigned_grid_w] != 0: # visted
             exist_type = np.where(grid_arrs[:, assigned_grid_h, assigned_grid_w] == 1)[0][0] - 4

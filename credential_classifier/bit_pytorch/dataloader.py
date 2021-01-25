@@ -1,7 +1,7 @@
 import torch.utils.data as data
 import numpy as np
 from bit_pytorch.grid_divider import read_img
-from bit_pytorch.utils import read_txt
+from bit_pytorch.utils import read_txt, read_txt_screenshot
 import torchvision.transforms as transform
 import os
 import torch
@@ -45,7 +45,7 @@ class ImageLoader(data.Dataset):
     def __init__(self, img_folder: str, annot_path: str):
         self.img_folder = img_folder
         self.annot_path = annot_path
-        self.num_imgs, self.labels, self.paths, self.preprocess_coordinates, self.img_classes = read_txt(annot_path)
+        self.num_imgs, self.labels, self.paths = read_txt_screenshot(annot_path)
         self.classes = {'credential': 0, 'noncredential': 1}
         self.transform = transform.Compose([transform.Resize((256, 256)),
                                             transform.ToTensor()])
@@ -56,7 +56,7 @@ class ImageLoader(data.Dataset):
 
         img_label = self.classes[np.asarray(self.labels)[np.asarray(self.paths) == image_file][0]] # credential/non-credential
 
-        image = Image.open(os.path.join(self.img_folder, image_file+'.png'))
+        image = Image.open(os.path.join(self.img_folder, image_file+'.png')).convert('RGB')
 
         image = self.transform(image)
 
@@ -66,20 +66,24 @@ class ImageLoader(data.Dataset):
         return self.num_imgs
 
 if __name__ == '__main__':
+    
+    train_set_orig = ImageLoader(img_folder='../datasets/train_imgs',
+                            annot_path='../datasets/train_coords.txt')
+        
+    train_set = ImageLoader(img_folder='../datasets/train_merge_imgs',
+                            annot_path='../datasets/train_merge_coords.txt')
 
-    train_set = GetLoader(img_folder='./data/train_imgs',
-                          annot_path='./data/train_coords.txt')
-
-    test_set = GetLoader(img_folder='./data/val_imgs',
-                         annot_path='./data/val_coords.txt')
-
+    val_set = ImageLoader(img_folder='../datasets/val_imgs',
+                          annot_path='../datasets/val_coords.txt')
+    
+    print(len(train_set_orig))
     print(len(train_set))
-    print(len(test_set))
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=32, drop_last=False, shuffle=False)
+    print(len(val_set))
+#     train_loader = torch.utils.data.DataLoader(
+#         train_set, batch_size=32, drop_last=False, shuffle=False)
 
-    val_loader = torch.utils.data.DataLoader(
-        test_set, batch_size=32, drop_last=False, shuffle=False)
+#     val_loader = torch.utils.data.DataLoader(
+#         test_set, batch_size=32, drop_last=False, shuffle=False)
 
     # from bit_pytorch.train import recycle
     # for x, y in recycle(train_loader):

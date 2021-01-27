@@ -31,8 +31,8 @@ def phishpedia_config(num_classes:int, weights_path:str, targetlist_path:str, gr
     weights = weights['model'] if 'model' in weights.keys() else weights
     new_state_dict = OrderedDict()
     for k, v in weights.items():
-        if not k.startswith('module'):
-            break
+#         if not k.startswith('module'):
+#             break
         name = k.split('module.')[1]
         new_state_dict[name]=v
         

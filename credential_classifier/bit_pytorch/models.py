@@ -182,78 +182,6 @@ class Flatten(torch.nn.Module):
         batch_size = x.shape[0]
         return x.view(batch_size, -1)
 
-class CNNCustomize(nn.Module):
-  """Implementation of Pre-activation (v2) ResNet mode."""
-
-  def __init__(self, input_ch_size=9, head_size=21843, zero_head=False):
-    super().__init__()
-
-    self.stem = nn.Sequential(OrderedDict([
-        ('pre_conv', StdConv2d(input_ch_size, 3, kernel_size=1, stride=1, padding=0, bias=False)),
-        ('pre_pool', nn.MaxPool2d(2))
-    ]))
-
-    # The following will be unreadable if we split lines.
-    # pylint: disable=line-too-long
-    self.body = nn.Sequential(OrderedDict([
-        ('conv1', StdConv2d(3, 8, kernel_size=3, stride=1, padding=1, bias=False)),
-        ('relu1', nn.ReLU(inplace=True)),
-        ('pool1', nn.MaxPool2d((2, 2))),
-        ('conv2', StdConv2d(8, 16, kernel_size=3, stride=1, padding=1, bias=False)),
-        ('relu2', nn.ReLU(inplace=True)),
-        ('pool2', nn.MaxPool2d((2, 2))),
-        ('conv3', StdConv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False)),
-        ('relu3', nn.ReLU(inplace=True))
-    ]))
-
-    self.zero_head = zero_head
-    self.head = nn.Sequential(OrderedDict([
-        ('flatten', Flatten()),
-        ('fc1', nn.Linear(32*10*10, 32)),
-        ('fc2', nn.Linear(32, head_size))
-    ]))
-
-  def forward(self, x):
-    x = self.head(self.body(self.stem(x)))
-    return x
-
-class FCAvgPool(nn.Module):
-    def __init__(self, input_ch_size=9, grid_num=10, head_size=2):
-        super(FCAvgPool, self).__init__()
-        self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(input_ch_size * (grid_num//2) * (grid_num//2), 32)
-        self.fc2 = nn.Linear(32, 16)
-        self.fc3 = nn.Linear(16, head_size)
-        self.grid_num = grid_num
-        self.input_ch_size = input_ch_size
-
-    def forward(self, x):
-        x = self.pool(x)
-        x = x.view(-1, self.input_ch_size * (self.grid_num//2) * (self.grid_num//2))
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-
-class FCAvgPoolV2(nn.Module):
-    def __init__(self, input_ch_size=9, grid_num=10, head_size=2):
-        super(FCAvgPoolV2, self).__init__()
-        self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(input_ch_size * (grid_num//2) * (grid_num//2), 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.fc4 = nn.Linear(32, head_size)
-        self.grid_num = grid_num
-        self.input_ch_size = input_ch_size
-
-    def forward(self, x):
-        x = self.pool(x)
-        x = x.view(-1, self.input_ch_size * (self.grid_num//2) * (self.grid_num//2))
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
 
 class FCMaxPool(nn.Module):
     def __init__(self, input_ch_size=9, grid_num=10, head_size=2):
@@ -279,22 +207,33 @@ class FCMaxPool(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-
-class FCSimple(nn.Module):
+    
+    
+class FCMaxPoolV2(nn.Module):
     def __init__(self, input_ch_size=9, grid_num=10, head_size=2):
-        super(FCSimple, self).__init__()
-        self.fc1 = nn.Linear(input_ch_size * grid_num * grid_num, 32)
-        self.fc2 = nn.Linear(32, 16)
-        self.fc3 = nn.Linear(16, head_size)
+        super(FCMaxPoolV2, self).__init__()
+        self.fc1 = nn.Linear(input_ch_size * grid_num * grid_num, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.fc3 = nn.Linear(32, 16)
+        self.fc4 = nn.Linear(16, head_size)
         self.grid_num = grid_num
         self.input_ch_size = input_ch_size
 
+    def features(self, x):
+        x = x.view(-1, self.input_ch_size * self.grid_num * self.grid_num)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        return x
+    
     def forward(self, x):
         x = x.view(-1, self.input_ch_size * self.grid_num * self.grid_num)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
         return x
+
 
 
 KNOWN_MODELS = OrderedDict([
@@ -310,15 +249,12 @@ KNOWN_MODELS = OrderedDict([
     ('BiT-S-R101x3', lambda *a, **kw: ResNetV2([3, 4, 23, 3], 3, *a, **kw)),
     ('BiT-S-R152x2', lambda *a, **kw: ResNetV2([3, 8, 36, 3], 2, *a, **kw)),
     ('BiT-S-R152x4', lambda *a, **kw: ResNetV2([3, 8, 36, 3], 4, *a, **kw)),
-    ('CNN', lambda *a, **kw: CNNCustomize(*a, **kw)),
-    ('FCAvg', lambda *a, **kw: FCAvgPool(*a, **kw)),
-    ('FCAvg2', lambda *a, **kw: FCAvgPool(*a, **kw)),
     ('FCMax',  lambda *a, **kw: FCMaxPool(*a, **kw)),
-    ('FCSimple', lambda *a, **kw: FCSimple(*a, **kw))
+    ('FCMaxV2',  lambda *a, **kw: FCMaxPoolV2(*a, **kw)),
 ])
 
-# if __name__ == '__main__':
-#     from torchsummary import summary
-#     model = KNOWN_MODELS['FCMax'](head_size=2)
-#     model.to('cuda:0')
-#     summary(model, (9, 10, 10))
+if __name__ == '__main__':
+    from torchsummary import summary
+    model = KNOWN_MODELS['FCMax'](head_size=2)
+    model.to('cuda:0')
+    summary(model, (9, 10, 10))

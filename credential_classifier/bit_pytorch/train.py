@@ -35,7 +35,7 @@ import bit_hyperrule
 from bit_pytorch.dataloader import GetLoader, ImageLoader
 from torch.utils.tensorboard import SummaryWriter
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
+os.environ["CUDA_VISIBLE_DEVICES"]="1,0"
 
 def recycle(iterable):
     """Variant of itertools.cycle that does not save iterates."""
@@ -47,17 +47,17 @@ def recycle(iterable):
 def mktrainval(args, logger):
 
     """Returns train and validation datasets."""
-#     train_set = ImageLoader(img_folder='../datasets/train_imgs',
-#                             annot_path='../datasets/train_coords.txt')
-
-#     val_set = ImageLoader(img_folder='../datasets/val_imgs',
-#                           annot_path='../datasets/val_coords.txt')
-
-    train_set = GetLoader(img_folder='../datasets/train_imgs',
+    train_set = ImageLoader(img_folder='../datasets/train_imgs',
                           annot_path='../datasets/train_coords.txt')
 
-    val_set = GetLoader(img_folder='../datasets/val_imgs',
-                         annot_path='../datasets/val_coords.txt')
+    val_set = ImageLoader(img_folder='../datasets/val_merge_imgs',
+                         annot_path='../datasets/val_merge_coords.txt')
+
+#     train_set = GetLoader(img_folder='../datasets/train_imgs',
+#                           annot_path='../datasets/train_coords.txt')
+
+#     val_set = GetLoader(img_folder='../datasets/val_merge_imgs',
+#                          annot_path='../datasets/val_merge_coords.txt')
 
 
     if args.examples_per_class is not None:
@@ -107,7 +107,7 @@ def run_eval(model, data_loader, device, logger, step):
 
 
 def main(args):
-    writer = SummaryWriter(os.path.join(args.logdir, args.name, 'tensorboard_write_{}_{}'.format(args.model, str(args.base_lr))), flush_secs=60)
+#     writer = SummaryWriter(os.path.join(args.logdir, args.name, 'tensorboard_write_{}_{}'.format(args.model, str(args.base_lr))), flush_secs=60)
     logger = bit_common.setup_logger(args)
 
     # Lets cuDNN benchmark conv implementations and choose the fastest.
@@ -119,9 +119,6 @@ def main(args):
 
     train_set, valid_set, train_loader, valid_loader = mktrainval(args, logger)
     model = models.KNOWN_MODELS[args.model](head_size=len(valid_set.classes))
-    
-#     logger.info("Moving model onto all GPUs")
-#     model = torch.nn.DataParallel(model)
 
     # Note: no weight-decay!
     step = 0
@@ -138,24 +135,27 @@ def main(args):
         
     # Resume fine-tuning if we find a saved model.
     savename = pjoin(args.logdir, args.name, "{}_{}.pth.tar".format(args.model, str(args.base_lr)))
-    try:
-        checkpoint = torch.load(savename, map_location="cpu")
-        logger.info(f"Found saved model to resume from at '{savename}'")
-        step = checkpoint["step"]
-        model.load_state_dict(checkpoint["model"])
-        optim.load_state_dict(checkpoint["optim"])
-        logger.info(f"Resumed at step {step}")
-    except FileNotFoundError:
-        logger.info("Training from scratch")
+#     try:
+#         checkpoint = torch.load(savename, map_location="cpu")
+#         logger.info(f"Found saved model to resume from at '{savename}'")
+#         step = checkpoint["step"]
+#         model.load_state_dict(checkpoint["model"])
+#         optim.load_state_dict(checkpoint["optim"])
+#         logger.info(f"Resumed at step {step}")
+#     except FileNotFoundError:
+#         logger.info("Training from scratch")
 
     # Print out the model summary
+    logger.info("Moving model onto all GPUs")
+    model = torch.nn.DataParallel(model)
     model = model.to(device)
-    summary(model, (9, 10, 10))
+#     summary(model, (9, 10, 10))
+    summary(model, (3, 256, 256))
 
     # Add model graph
-    dummy_input = torch.rand(1, 9, 10, 10, device=device)
-    writer.add_graph(model, dummy_input)
-    writer.flush()
+#     dummy_input = torch.rand(1, 9, 10, 10, device=device)
+#     writer.add_graph(model, dummy_input)
+#     writer.flush()
 
     # Start training
     model.train()
@@ -166,8 +166,8 @@ def main(args):
     best_correct_rate = init_correct_rate
     logger.info(f"[Initial validation accuracy {init_correct_rate}]")
     logger.flush()
-    writer.add_scalar('val_top1_acc', init_correct_rate, 0)
-    writer.flush()
+#     writer.add_scalar('val_top1_acc', init_correct_rate, 0)
+#     writer.flush()
 
     logger.info("Starting training!")
 
@@ -175,8 +175,8 @@ def main(args):
 
         print('Batch input shape:', x.shape)
         print('Batch target shape:', y.shape)
-        writer.add_histogram('model.input', x.data, step)
-        writer.flush()
+#         writer.add_histogram('model.input', x.data, step)
+#         writer.flush()
 
         # Schedule sending to GPU(s)
         x = x.to(device, dtype=torch.float)
@@ -198,8 +198,8 @@ def main(args):
         # BP
         optim.zero_grad()
         c.backward()
-        writer.add_histogram('model.input.grad', x.grad.data, step)
-        writer.flush()
+#         writer.add_histogram('model.input.grad', x.grad.data, step)
+#         writer.flush()
         optim.step()
         step += 1
 
@@ -207,27 +207,11 @@ def main(args):
         logger.info(f"[step {step}]: loss={c_num:.5f} (lr={lr})")    # pylint: disable=logging-format-interpolation
         logger.flush()
 
-        # ...log the gradients/weights
-        writer.add_scalar('training_loss',    c_num, step)
-        writer.flush()
-        writer.add_histogram('model.fc1.weights', model.fc1.weight.data,step)
-        writer.flush()
-        writer.add_histogram('model.fc2.weights', model.fc2.weight.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc3.weights', model.fc3.weight.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc1.grad', model.fc1.weight.grad.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc2.grad', model.fc2.weight.grad.data, step)
-        writer.flush()
-        writer.add_histogram('model.fc3.grad', model.fc3.weight.grad.data, step)
-        writer.flush()
-
         # Get train_acc every 1 epoch
         if step % (len(train_set)//args.batch) == 0:
             correct_rate = run_eval(model, valid_loader, device, logger, step)
-            writer.add_scalar('val_top1_acc', correct_rate, step)
-            writer.flush()
+#             writer.add_scalar('val_top1_acc', correct_rate, step)
+#             writer.flush()
 
             # Save model at best validation accuracy
             if correct_rate > best_correct_rate:
@@ -241,8 +225,8 @@ def main(args):
 
     # Final evaluation at the end of training
     correct_rate = run_eval(model, valid_loader, device, logger, step)
-    writer.add_scalar('val_top1_acc', correct_rate, step)
-    writer.flush()
+#     writer.add_scalar('val_top1_acc', correct_rate, step)
+#     writer.flush()
 
 
 if __name__ == "__main__":

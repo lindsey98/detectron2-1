@@ -17,7 +17,15 @@ def credential_config(checkpoint):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = FCMaxPool()
     checkpoint = torch.load(checkpoint, map_location="cpu")
-    model.load_state_dict(checkpoint["model"])
+    checkpoint = checkpoint['model'] if 'model' in checkpoint.keys() else checkpoint
+    new_state_dict = OrderedDict()
+    for k, v in checkpoint.items():
+#         if not k.startswith('module'):
+#             break
+        name = k.split('module.')[1]
+        new_state_dict[name]=v
+        
+    model.load_state_dict(new_state_dict)
     model.to(device)
     model.eval()
     return model
@@ -35,8 +43,8 @@ def credential_config_screenshot(checkpoint):
     checkpoint = checkpoint['model'] if 'model' in checkpoint.keys() else checkpoint
     new_state_dict = OrderedDict()
     for k, v in checkpoint.items():
-        if not k.startswith('module'):
-            break
+#         if not k.startswith('module'):
+#             break
         name = k.split('module.')[1]
         new_state_dict[name]=v
         

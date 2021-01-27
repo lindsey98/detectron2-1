@@ -45,6 +45,16 @@ def read_txt(txt_file: str):
     assert (len(preprocess_coordinates) == len(classes)) & (len(paths) == len(preprocess_coordinates)) & (len(types) == len(classes))
     return num_imgs, classes, paths, preprocess_coordinates, types
 
+def read_txt_screenshot(txt_file: str):
+    '''read labelled txt file'''
+    contents = [x.strip() for x in open(txt_file).readlines()]
+    paths = [x.split('\t')[0] for x in contents]
+    classes = [x.split('\t')[-1] for x in contents]
+    num_imgs = len(set(paths))
+
+    assert (len(paths) == len(classes))
+    return num_imgs, classes, paths
+
 def split_data(txt_file: str, test_ratio: float):
     '''Train test split'''
     classes_dict = {'credential': 0, 'noncredential': 1}

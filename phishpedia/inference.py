@@ -235,5 +235,3 @@ def siamese_inference_debug(model, domain_map, logo_feat_list, file_name_list, s
 
 
 
-
-

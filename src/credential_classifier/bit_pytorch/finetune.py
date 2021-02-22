@@ -24,8 +24,6 @@ import torch
 import torchvision as tv
 from torchsummary import summary
 
-# import .fewshot as fs
-# import .lbtoolbox as lb
 import os
 import bit_pytorch.models as models
 
@@ -35,7 +33,7 @@ import bit_hyperrule
 from bit_pytorch.dataloader import GetLoader, ImageLoader
 from torch.utils.tensorboard import SummaryWriter
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="1,0"
+os.environ["CUDA_VISIBLE_DEVICES"]="0, 1"
 
 def recycle(iterable):
     """Variant of itertools.cycle that does not save iterates."""
@@ -47,17 +45,17 @@ def recycle(iterable):
 def mktrainval(args, logger):
 
     """Returns train and validation datasets."""
-    train_set = ImageLoader(img_folder='../datasets/train_imgs',
-                          annot_path='../datasets/train_coords.txt')
+#     train_set = ImageLoader(img_folder='../datasets/train_merge_imgs',
+#                             annot_path='../datasets/train_merge_coords.txt')
 
-    val_set = ImageLoader(img_folder='../datasets/val_merge_imgs',
+#     val_set = ImageLoader(img_folder='../datasets/val_imgs',
+#                           annot_path='../datasets/val_coords.txt')
+
+    train_set = GetLoader(img_folder='../datasets/train_merge_imgs_grid2',
+                            annot_path='../datasets/train_merge_grid_coords2.txt')
+
+    val_set = GetLoader(img_folder='../datasets/val_merge_imgs',
                          annot_path='../datasets/val_merge_coords.txt')
-
-#     train_set = GetLoader(img_folder='../datasets/train_imgs',
-#                           annot_path='../datasets/train_coords.txt')
-
-#     val_set = GetLoader(img_folder='../datasets/val_merge_imgs',
-#                          annot_path='../datasets/val_merge_coords.txt')
 
 
     if args.examples_per_class is not None:
@@ -107,55 +105,57 @@ def run_eval(model, data_loader, device, logger, step):
 
 
 def main(args):
-#     writer = SummaryWriter(os.path.join(args.logdir, args.name, 'tensorboard_write_{}_{}'.format(args.model, str(args.base_lr))), flush_secs=60)
-    logger = bit_common.setup_logger(args)
 
-    # Lets cuDNN benchmark conv implementations and choose the fastest.
-    # Only good if sizes stay the same within the main loop!
-    torch.backends.cudnn.benchmark = True
+    logger = bit_common.setup_logger(args)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Going to train on {device}")
+    torch.backends.cudnn.benchmark = True
 
     train_set, valid_set, train_loader, valid_loader = mktrainval(args, logger)
     model = models.KNOWN_MODELS[args.model](head_size=len(valid_set.classes))
+    
+    ############# Freeze front layers only during finetuning #######################################
+    # Freeze all the weights first
+#     for param in model.parameters():
+#         param.requires_grad = True
 
+#     # Unfreeze last few layers
+#     for param in model.body.block3.parameters():
+#         param.requires_grad = True
+        
+#     for param in model.body.block4.parameters():
+#         param.requires_grad = True
+
+#     for param in model.head.parameters():
+#         param.requires_grad = True
+    #####################################################################################################
+    
     # Note: no weight-decay!
     step = 0
-    optim = torch.optim.SGD(model.parameters(), lr=args.base_lr, momentum=0.9)
+#     optim = torch.optim.SGD(model.parameters(), lr=args.base_lr, momentum=0.9)
+    optim = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=args.base_lr, momentum=0.9)
     
     # If pretrained weights are specified
     if args.weights_path:
         logger.info("Loading weights from {}".format(args.weights_path))
         checkpoint = torch.load(args.weights_path, map_location="cpu")
-        # New task might have different classes; remove the pretrained classifier weights
-        del checkpoint['model']['module.head.conv.weight']
-        del checkpoint['model']['module.head.conv.bias']
         model.load_state_dict(checkpoint["model"], strict=False)
         
-    # Resume fine-tuning if we find a saved model.
+    # Saved model path
     savename = pjoin(args.logdir, args.name, "{}_{}.pth.tar".format(args.model, str(args.base_lr)))
-#     try:
-#         checkpoint = torch.load(savename, map_location="cpu")
-#         logger.info(f"Found saved model to resume from at '{savename}'")
-#         step = checkpoint["step"]
-#         model.load_state_dict(checkpoint["model"])
-#         optim.load_state_dict(checkpoint["optim"])
-#         logger.info(f"Resumed at step {step}")
-#     except FileNotFoundError:
-#         logger.info("Training from scratch")
-
+    logger.info("Finetining from scratch")
+    
     # Print out the model summary
-    logger.info("Moving model onto all GPUs")
     model = torch.nn.DataParallel(model)
     model = model.to(device)
-#     summary(model, (9, 10, 10))
-    summary(model, (3, 256, 256))
+    print([x.requires_grad for x in model.parameters()])
+#     summary(model, (3, 256,256))
+    summary(model, (9, 10,10))
 
     # Add model graph
+#     dummy_input = torch.rand(1, 3, 256, 256, device=device)
 #     dummy_input = torch.rand(1, 9, 10, 10, device=device)
-#     writer.add_graph(model, dummy_input)
-#     writer.flush()
 
     # Start training
     model.train()
@@ -166,17 +166,12 @@ def main(args):
     best_correct_rate = init_correct_rate
     logger.info(f"[Initial validation accuracy {init_correct_rate}]")
     logger.flush()
-#     writer.add_scalar('val_top1_acc', init_correct_rate, 0)
-#     writer.flush()
-
     logger.info("Starting training!")
 
     for x, y in recycle(train_loader):
 
         print('Batch input shape:', x.shape)
         print('Batch target shape:', y.shape)
-#         writer.add_histogram('model.input', x.data, step)
-#         writer.flush()
 
         # Schedule sending to GPU(s)
         x = x.to(device, dtype=torch.float)
@@ -184,9 +179,14 @@ def main(args):
         x.requires_grad = True
 
         # Update learning-rate, including stop training if over.
-        lr = bit_hyperrule.get_lr(step=step, dataset_size=len(train_set), base_lr=args.base_lr)
+#         lr = bit_hyperrule.get_lr(step=step, dataset_size=len(train_set), base_lr=args.base_lr)
+#         if lr is None:
+#             break
+        ############## Finetuning do not need to update lr #####################################
+        lr = bit_hyperrule.get_lr_finetune(step=step, dataset_size=len(train_set), base_lr=args.base_lr, batch_size=args.batch)
         if lr is None:
             break
+        ########################################################################################
         for param_group in optim.param_groups:
             param_group["lr"] = lr
 
@@ -198,8 +198,6 @@ def main(args):
         # BP
         optim.zero_grad()
         c.backward()
-#         writer.add_histogram('model.input.grad', x.grad.data, step)
-#         writer.flush()
         optim.step()
         step += 1
 
@@ -210,24 +208,23 @@ def main(args):
         # Get train_acc every 1 epoch
         if step % (len(train_set)//args.batch) == 0:
             correct_rate = run_eval(model, valid_loader, device, logger, step)
-#             writer.add_scalar('val_top1_acc', correct_rate, step)
-#             writer.flush()
-
-            # Save model at best validation accuracy
-            if correct_rate > best_correct_rate:
-                logger.info(f'Save model at step {step} or epoch {step // (len(train_set)//args.batch)}')
-                torch.save({
-                    "step": step,
-                    "model": model.state_dict(),
-                    "optim": optim.state_dict(),
-                }, savename)
-                best_correct_rate = correct_rate
+        
+        logger.info(f'Save model at step {step} or epoch {step // (len(train_set)//args.batch)}')
+        torch.save({
+            "step": step,
+            "model": model.state_dict(),
+            "optim": optim.state_dict(),
+        }, savename)
 
     # Final evaluation at the end of training
     correct_rate = run_eval(model, valid_loader, device, logger, step)
-#     writer.add_scalar('val_top1_acc', correct_rate, step)
-#     writer.flush()
-
+    logger.info(f'Save model at step {step} or epoch {step // (len(train_set)//args.batch)}')
+    torch.save({
+            "step": step,
+            "model": model.state_dict(),
+            "optim": optim.state_dict(),
+        }, savename)    
+    
 
 if __name__ == "__main__":
     parser = bit_common.argparser(models.KNOWN_MODELS.keys())

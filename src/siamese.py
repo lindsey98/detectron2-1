@@ -1,7 +1,7 @@
-from phishpedia.models import KNOWN_MODELS
-from phishpedia.utils import brand_converter
-from phishpedia.inference import siamese_inference, pred_siamese, siamese_inference_debug
-from phishpedia.utils import brand_converter
+from .phishpedia.models import KNOWN_MODELS
+from .phishpedia.utils import brand_converter
+from .phishpedia.inference import siamese_inference, pred_siamese, siamese_inference_debug
+from .phishpedia.utils import brand_converter
 import torch
 import os
 import numpy as np

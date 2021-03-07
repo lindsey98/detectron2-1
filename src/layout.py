@@ -1,10 +1,10 @@
-from layout_matcher.layout_matcher_knn import bipartite_web
-from layout_matcher.misc import load_yaml
-from layout_matcher.heuristic import layout_heuristic
+from .layout_matcher.layout_matcher_knn import bipartite_web
+from .layout_matcher.misc import load_yaml
+from .layout_matcher.heuristic import layout_heuristic
 
 import os
 import cv2
-from element_detector import element_recognition
+from .element_detector import element_recognition
 import torch
 import numpy as np
 

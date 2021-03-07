@@ -32,10 +32,10 @@ import bit_pytorch.models as models
 import bit_common
 import bit_hyperrule
 
-from bit_pytorch.dataloader import GetLoader, ImageLoader
+from bit_pytorch.dataloader import GetLoader, ImageLoader, HybridLoader
 from torch.utils.tensorboard import SummaryWriter
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="1,0"
+os.environ["CUDA_VISIBLE_DEVICES"]="1,0,2,3"
 
 def recycle(iterable):
     """Variant of itertools.cycle that does not save iterates."""
@@ -53,11 +53,18 @@ def mktrainval(args, logger):
 #     val_set = ImageLoader(img_folder='../datasets/val_merge_imgs',
 #                          annot_path='../datasets/val_merge_coords.txt')
 
-    train_set = GetLoader(img_folder='../datasets/train_merge_imgs', 
-                          annot_path='../datasets/train_al_merge_coords2.txt') 
+#     train_set = GetLoader(img_folder='../datasets/train_merge_imgs', 
+#                           annot_path='../datasets/train_al_merge_coords2.txt') 
 
-    val_set = GetLoader(img_folder='../datasets/val_merge_imgs',
-                         annot_path='../datasets/val_merge_coords.txt')
+#     val_set = GetLoader(img_folder='../datasets/val_merge_imgs',
+#                          annot_path='../datasets/val_merge_coords.txt')
+
+
+    train_set = HybridLoader(img_folder='../../datasets/train_imgs', 
+                          annot_path='../../datasets/train_coords.txt') 
+
+    val_set = HybridLoader(img_folder='../../datasets/val_merge_imgs',
+                         annot_path='../../datasets/val_merge_coords.txt')
 
 
     if args.examples_per_class is not None:
@@ -70,12 +77,12 @@ def mktrainval(args, logger):
     logger.info(f"Num of classes: {len(val_set.classes)}")
 
     valid_loader = torch.utils.data.DataLoader(
-            val_set, batch_size=args.batch, shuffle=False,
-            num_workers=args.workers, pin_memory=True, drop_last=False)
+                    val_set, batch_size=args.batch, shuffle=False,
+                    num_workers=args.workers, pin_memory=True, drop_last=False)
 
     train_loader = torch.utils.data.DataLoader(
-            train_set, batch_size=args.batch, shuffle=True,
-            num_workers=args.workers, pin_memory=True, drop_last=False)
+                    train_set, batch_size=args.batch, shuffle=True,
+                    num_workers=args.workers, pin_memory=True, drop_last=False)
 
     return train_set, val_set, train_loader, valid_loader
 
@@ -149,8 +156,8 @@ def main(args):
     logger.info("Moving model onto all GPUs")
     model = torch.nn.DataParallel(model)
     model = model.to(device)
-    summary(model, (9, 10, 10))
-#     summary(model, (3, 256, 256))
+#     summary(model, (9, 10, 10))
+    summary(model, (8, 256, 256))
 
     # Add model graph
 #     dummy_input = torch.rand(1, 9, 10, 10, device=device)

@@ -6,6 +6,84 @@ import numpy as np
 import os
 import math
 
+def coord_reshape(coords, image_shape, reshaped_size=256):
+    '''
+    Revise coordinates when the image is resized
+    '''
+    height, width = image_shape
+    new_coords = []
+    for c in coords:
+        x1, y1, x2, y2 = c
+        x1n, y1n, x2n, y2n = reshaped_size*x1/width, reshaped_size*y1/height, reshaped_size*x2/width, reshaped_size*y2/height
+        new_coords.append([x1n, y1n, x2n, y2n])
+        
+    return np.asarray(new_coords)
+
+def coord2pixel_reverse(img_path, coords, types, num_types=5, reshaped_size=256) -> torch.Tensor:
+    '''
+    Convert coordinate to multi-hot encodings for coordinate class
+    '''
+    img = cv2.imread(img_path) if not isinstance(img_path, np.ndarray) else img_path
+    coords = coords.numpy() if not isinstance(coords, np.ndarray) else coords
+    coords = coord_reshape(coords, img.shape[:2], reshaped_size) # reshape coordinates
+    types = types.numpy() if not isinstance(types, np.ndarray) else types
+    
+    # Incorrect path/empty image
+    if img is None:
+        raise AttributeError('Image is None')
+    height, width = img.shape[:2]
+    # Empty image
+    if height == 0 or width == 0:
+        raise AttributeError('Empty image')
+
+    # grid array of shape ClassxHxW
+    grid_arrs = np.zeros((num_types, reshaped_size, reshaped_size))  
+    
+    for j, coord in enumerate(coords):
+        x1, y1, x2, y2 = coord
+        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        if x2 - x1 <= 0 or y2 - y1 <= 0:
+            continue # ignore
+
+        # multi-hot encoding for type?
+        class_position = types[j]
+        grid_arrs[class_position, y1:y2, x1:x2] = 1.
+        
+    return torch.from_numpy(grid_arrs)   
+
+def coord2pixel(img_path, coords, types, num_types=5, reshaped_size=256) -> torch.Tensor:
+    '''
+    Convert coordinate to multi-hot encodings for coordinate class
+    '''
+    img = cv2.imread(img_path) if not isinstance(img_path, np.ndarray) else img_path
+    coords = coords.numpy() if not isinstance(coords, np.ndarray) else coords
+    coords = coord_reshape(coords, img.shape[:2], reshaped_size) # reshape coordinates
+    types = types.numpy() if not isinstance(types, np.ndarray) else types
+    
+    # Incorrect path/empty image
+    if img is None:
+        raise AttributeError('Image is None')
+    height, width = img.shape[:2]
+    # Empty image
+    if height == 0 or width == 0:
+        raise AttributeError('Empty image')
+
+    # grid array of shape ClassxHxW
+    grid_arrs = np.zeros((num_types, reshaped_size, reshaped_size))  
+    type_dict = {'logo': 1, 'input': 2, 'button': 3, 'label': 4, 'block':5}
+    
+    for j, coord in enumerate(coords):
+        x1, y1, x2, y2 = coord
+        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        if x2 - x1 <= 0 or y2 - y1 <= 0:
+            continue # ignore
+
+        # multi-hot encoding for type?
+        class_position = type_dict[types[j]] - 1
+        grid_arrs[class_position, y1:y2, x1:x2] = 1.
+        
+    return torch.from_numpy(grid_arrs)    
+
 def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tensor:
     '''
     Convert image with bbox predictions as into grid format
@@ -33,7 +111,7 @@ def read_img_reverse(img, coords, types, num_types=5, grid_num=10) -> torch.Tens
 
     # grid array of shape CxHxW
     grid_arrs = np.zeros((4+num_types, grid_num, grid_num))  # Must be [0, 1], use rel_x, rel_y, rel_w, rel_h
-
+    
     for j, coord in enumerate(coords):
         x1, y1, x2, y2 = coord
         w = max(0, x2 - x1)

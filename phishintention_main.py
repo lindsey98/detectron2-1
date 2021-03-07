@@ -4,7 +4,7 @@ import os
 import argparse
 from gsheets import gwrapper
 from utils import *
-from element_detector import vis
+from src.element_detector import vis
 
 def main(url, screenshot_path):
     
@@ -50,71 +50,78 @@ def main(url, screenshot_path):
             
         if pred_target is not None:
             # CRP classifier + heuristic
-            cre_pred = credential_overall(img_path=screenshot_path, cls_model=cls_model, 
-                                          pred_boxes=pred_boxes, pred_classes=pred_classes)
+            cre_pred, cred_conf, _  = credential_classifier_mixed_al(img=screenshot_path, coords=pred_boxes, 
+                                                                 types=pred_classes, model=cls_model)
             
             if cre_pred == 1: # non-CRP page
-                print('Non-CRP, enter dynamic analysis')
+#                 print('Non-CRP, enter dynamic analysis')
                 
                 ###### Dynamic analysis here ##############
                 # update url and screenshot path
-                url, screenshot_path, successful = dynamic_analysis(url, screenshot_path, cls_model)
+#                 url, screenshot_path, successful = dynamic_analysis(url, screenshot_path, cls_model)
                 ###########################################
                 
                 waive_crp_classifier = True # only run dynamic analysis once
                 
-                if successful == False:
-                    print('Dynamic analysis cannot find any link redirected to a CRP page, report as benign')
+#                 if successful == False:
+#                     print('Dynamic analysis cannot find any link redirected to a CRP page, report as benign')
                     return phish_category, None, plotvis
                 
             else: # already a CRP page
                 print('Already a CRP, continue')
                 break
         
+    if pred_target is not None:
+        phish_category = 1
+        # Visualize
+        cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
         
+    return phish_category, pred_target, plotvis
+
     ######################## Step 4: Layout matcher #####################################################################
-    if pred_target not in ['Amazon', 'Facebook', 'Google', 'Instagram', 'LinkedIn Corporation', 'ms_skype', 'Twitter, Inc.']:
-        phish_category = 1 # Report as phish
-        print('Reported target is not from social media brands, no need for layout matcher')
-        # Visualize
-        cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
-        return phish_category, pred_target, plotvis
+#     if pred_target not in ['Amazon', 'Facebook', 'Google', 'Instagram', 'LinkedIn Corporation', 'ms_skype', 'Twitter, Inc.']:
+#         phish_category = 1 # Report as phish
+#         print('Reported target is not from social media brands, no need for layout matcher')
+#         # Visualize
+#         cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
+#                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+#         return phish_category, pred_target, plotvis
 
-    elif pattern_ct >= 2: # layout heuristic adopted from crp heuristic
-        phish_category = 1 # Report as phish
-        print('Has a credential-requiring layout, no need for layout matcher')
-        # Visualize
-        cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
-        return phish_category, pred_target, plotvis
+#     elif pattern_ct >= 2: # layout heuristic adopted from crp heuristic
+#         phish_category = 1 # Report as phish
+#         print('Has a credential-requiring layout, no need for layout matcher')
+#         # Visualize
+#         cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
+#                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+#         return phish_category, pred_target, plotvis
 
-    else: 
-        #  Layout template matching
-        layout_cfg, gt_coords_arr, gt_clses, gt_files_arr, gt_shot_size_arr = layout_config(cfg_dir=layout_cfg_dir, 
-                                                                           ref_dir=layout_ref_dir, 
-                                                                           matched_brand=pred_target,
-                                                                           ele_model=ele_model)
-        # Get the matched template and matched similarity
-        max_s, max_site = layout_matcher(pred_boxes=pred_boxes, pred_clses=pred_classes, 
-                                        img=img_path, 
-                                        gt_coords_arr=gt_coords_arr, gt_clses=gt_clses, 
-                                        gt_files_arr=gt_files_arr, gt_shot_size_arr=gt_shot_size_arr,
-                                        cfg=layout_cfg)
+#     else: 
+#         #  Layout template matching
+#         layout_cfg, gt_coords_arr, gt_clses, gt_files_arr, gt_shot_size_arr = layout_config(cfg_dir=layout_cfg_dir, 
+#                                                                            ref_dir=layout_ref_dir, 
+#                                                                            matched_brand=pred_target,
+#                                                                            ele_model=ele_model)
+#         # Get the matched template and matched similarity
+#         max_s, max_site = layout_matcher(pred_boxes=pred_boxes, pred_clses=pred_classes, 
+#                                         img=img_path, 
+#                                         gt_coords_arr=gt_coords_arr, gt_clses=gt_clses, 
+#                                         gt_files_arr=gt_files_arr, gt_shot_size_arr=gt_shot_size_arr,
+#                                         cfg=layout_cfg)
 
-        # Success layout match
-        if max_s >= layout_ts: 
-            phish_category = 1 # Report as phish
-            print('Reported target is from social media brands, layout matcher is successful')
-            # Visualize
-            cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
-            return phish_category, pred_target, plotvis
+#         # Success layout match
+#         if max_s >= layout_ts: 
+#             phish_category = 1 # Report as phish
+#             print('Reported target is from social media brands, layout matcher is successful')
+#             # Visualize
+#             cv2.putText(plotvis, "Target: %s" % pred_target, (int(matched_coord[0] + 20), int(matched_coord[1] + 20)),
+#                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+#             return phish_category, pred_target, plotvis
 
         # Unsuccessful layout match
-        else: 
-            print('Reported target is from social media brands, layout matcher is unsuccessful')
-            return phish_category, None, plotvis
+#         else: 
+#             print('Reported target is from social media brands, layout matcher is unsuccessful')
+#             return phish_category, None, plotvis
 
 
 

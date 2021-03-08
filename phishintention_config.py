@@ -14,6 +14,7 @@ cls_model = credential_config(checkpoint='src/credential_classifier/output/hybri
                               model_type='mixed')
 
 # siamese model
+print('Load protected logo list')
 pedia_model, logo_feat_list, file_name_list = phishpedia_config(num_classes=277, 
                                                 weights_path='src/phishpedia/resnetv2_rgb_new.pth.tar',
                                                 targetlist_path='src/phishpedia/expand_targetlist/')

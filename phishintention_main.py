@@ -2,8 +2,8 @@
 from phishintention_config import *
 import os
 import argparse
-from gsheets import gwrapper
-from utils import *
+# from gsheets import gwrapper
+# from src.utils import *
 from src.element_detector import vis
 
 def main(url, screenshot_path):
@@ -65,7 +65,8 @@ def main(url, screenshot_path):
                 
 #                 if successful == False:
 #                     print('Dynamic analysis cannot find any link redirected to a CRP page, report as benign')
-                    return phish_category, None, plotvis
+#                     return phish_category, None, plotvis
+                return phish_category, None, plotvis #TODO: remove this
                 
             else: # already a CRP page
                 print('Already a CRP, continue')
@@ -153,7 +154,7 @@ if __name__ == "__main__":
             if not os.path.exists(screenshot_path):
                 continue
             else:
-                phish_category, phish_target = main(url=url, screenshot_path=screenshot_path)
+                phish_category, phish_target, plotvis = main(url=url, screenshot_path=screenshot_path)
                 
                 try:
                     if vt_scan(url) is not None:
@@ -170,14 +171,16 @@ if __name__ == "__main__":
 
                 with open(args.results, "a+") as f:
                     f.write(url +"\t")
-                    f.write(phish_category +"\t")
-                    f.write(phish_target + "\t") # write top1 prediction only
+                    f.write(str(phish_category) +"\t")
+                    f.write(str(phish_target) + "\t") # write top1 prediction only
                     f.write(vt_result +"\n")
+                    
+                cv2.imwrite(os.path.join(full_path, "predict.png"), plotvis)
                 
         except Exception as e:
             print(str(e))
           #  raise(e)
         
-    sheets = gwrapper()
-    sheets.update_file(results_path, date) 
+#     sheets = gwrapper()
+#     sheets.update_file(results_path, date) 
 
